@@ -398,20 +398,22 @@
             bottom: 0;
             left: 0;
             right: 0;
-            z-index: 22;
-            padding: 8px 10px max(10px, env(safe-area-inset-bottom));
-            gap: 8px;
-            background: linear-gradient(180deg, transparent, rgba(0,0,0,0.75) 35%);
+            z-index: 30;
+            padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.92);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
             pointer-events: auto;
+            touch-action: manipulation;
         }
         #mobileMenuNav .menu-nav-btn {
             flex: 1;
             margin: 0;
-            padding: 10px 6px;
-            font-size: 13px;
-            background: rgba(255,255,255,0.12);
+            padding: 10px 4px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.1);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.35);
+            border: 1px solid rgba(255,255,255,0.25);
             border-radius: 8px;
             text-transform: none;
             box-shadow: none;
@@ -421,115 +423,166 @@
             color: #ffd700;
             border-color: #ffd700;
         }
-        #mobileTouchHint {
-            display: none;
-            position: fixed;
-            bottom: max(110px, calc(88px + env(safe-area-inset-bottom)));
-            left: 10px;
-            right: 10px;
-            transform: none;
-            z-index: 12;
-            font-size: 11px;
-            color: rgba(255,255,255,0.75);
-            background: rgba(0,0,0,0.45);
-            padding: 6px 10px;
-            border-radius: 8px;
-            pointer-events: none;
-            text-align: center;
-            line-height: 1.35;
-        }
-        @media (hover: none) and (pointer: coarse), (max-width: 900px) {
-            #instructions { display: none; }
+        #mobileTouchHint { display: none !important; }
+        @media (max-width: 900px) {
+            body { padding: 0; }
+            #instructions,
             #loadingMsg {
-                bottom: max(12px, env(safe-area-inset-bottom));
-                left: 12px;
-                right: auto;
+                display: none !important;
             }
 
-            /* Main menu: compact header + tabbed panels */
-            body.game-menu #startScreen {
+            #startScreen {
                 position: fixed;
-                top: max(8px, env(safe-area-inset-top));
-                left: 10px;
-                right: 10px;
+                top: env(safe-area-inset-top, 0);
+                left: 0;
+                right: 0;
+                bottom: calc(54px + env(safe-area-inset-bottom, 0));
                 transform: none;
                 width: auto;
                 max-width: none;
-                padding: 14px 16px;
-                border-radius: 12px;
-                max-height: min(44vh, 360px);
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
+                border-radius: 0;
             }
-            body.game-menu #startScreen h1 { font-size: 1.5rem; }
-            body.game-menu #startScreen p { font-size: 0.88rem; }
-            body.game-menu #startScreen button { width: 100%; margin-top: 10px; }
-            body.game-menu #usernameRow { flex-direction: column; }
-            body.game-menu #usernameRow button { width: 100%; }
 
+            /* Never use desktop panel positions on mobile */
+            .menu-panel {
+                display: none !important;
+            }
+
+            /* --- Main menu: one screen at a time --- */
             body.game-menu #mobileMenuNav {
                 display: flex;
             }
-            body.game-menu .menu-panel {
-                display: none;
+
+            body.game-menu:not(.panel-leaderboard):not(.panel-chat):not(.panel-shop) #startScreen {
+                display: block;
                 position: fixed;
-                left: 10px;
-                right: 10px;
-                top: auto;
-                bottom: calc(58px + env(safe-area-inset-bottom));
+                top: env(safe-area-inset-top, 0);
+                left: 0;
+                right: 0;
+                bottom: calc(54px + env(safe-area-inset-bottom, 0));
+                transform: none;
                 width: auto;
-                max-height: min(36vh, 280px);
-                padding: 12px;
+                max-width: none;
+                margin: 0;
+                padding: 14px 16px 20px;
+                border-radius: 0;
+                border: none;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                z-index: 20;
+            }
+
+            body.game-menu.panel-leaderboard #startScreen,
+            body.game-menu.panel-chat #startScreen,
+            body.game-menu.panel-shop #startScreen {
+                display: none !important;
+            }
+
+            body.game-menu #startScreen h1 { font-size: 1.55rem; }
+            body.game-menu .menu-tagline { font-size: 0.85rem; margin: 4px 0 8px; }
+            body.game-menu #howToPlay { font-size: 0.78rem; padding: 8px 10px; margin: 8px 0; }
+            body.game-menu #startBtn {
+                width: 100%;
+                margin-top: 12px;
+                padding: 14px;
+                font-size: 19px;
+            }
+            body.game-menu #usernameRow { flex-direction: column; gap: 6px; margin-top: 8px; }
+            body.game-menu #usernameRow button { width: 100%; }
+
+            body.game-menu.panel-leaderboard #leaderboardPanel,
+            body.game-menu.panel-chat #chatPanel,
+            body.game-menu.panel-shop #shopPanel {
+                display: flex !important;
+                position: fixed;
+                top: env(safe-area-inset-top, 0);
+                left: 0;
+                right: 0;
+                bottom: calc(54px + env(safe-area-inset-bottom, 0));
+                width: auto;
+                max-height: none;
+                height: auto;
+                margin: 0;
+                padding: 14px;
+                border-radius: 0;
+                border: none;
+                border-top: 2px solid rgba(255, 255, 255, 0.12);
+                z-index: 20;
                 overflow: hidden;
             }
-            body.game-menu.panel-leaderboard #leaderboardPanel { display: flex; }
-            body.game-menu.panel-chat #chatPanel { display: flex; }
-            body.game-menu.panel-shop #shopPanel { display: flex; }
 
-            body.game-menu #leaderboardPanel { max-height: min(36vh, 280px); }
-            body.game-menu #chatPanel { height: min(36vh, 280px); }
-            body.game-menu #shopPanel { max-height: min(36vh, 280px); }
+            body.game-menu #chatPanel {
+                height: auto;
+            }
 
-            /* During gameplay: HUD + controls only */
+            /* --- Gameplay: canvas + compact HUD + touch controls only --- */
             body.game-playing #startScreen,
             body.game-playing #mobileMenuNav,
-            body.game-playing .menu-panel {
+            body.game-playing .menu-panel,
+            body.game-playing #gameOver {
                 display: none !important;
             }
+
             body.game-playing #mobileControls {
                 display: flex;
+                z-index: 50;
+                bottom: max(14px, env(safe-area-inset-bottom));
+                padding: 0 10px;
+                gap: 8px;
             }
-            body.game-playing #mobileTouchHint {
-                display: block;
-            }
-            body.game-playing #ui {
-                top: max(8px, env(safe-area-inset-top));
-                left: 10px;
-                right: 10px;
-            }
-            body.game-playing #scoreDisplay { font-size: 32px; }
-            body.game-playing #donutDisplay { font-size: 15px; }
-            body.game-playing #powerupDisplay { font-size: 12px; }
 
-            /* Game over */
+            body.game-playing #mobileControls button {
+                width: 82px;
+                height: 82px;
+                font-size: 24px;
+            }
+
+            body.game-playing #jumpBtn {
+                width: 94px;
+                height: 94px;
+                font-size: 16px;
+            }
+
+            body.game-playing #ui {
+                position: fixed;
+                top: max(6px, env(safe-area-inset-top));
+                left: 8px;
+                right: auto;
+                z-index: 10;
+                max-width: 50vw;
+            }
+
+            body.game-playing #scoreDisplay { font-size: 26px; line-height: 1; }
+            body.game-playing #liveStatus { font-size: 10px; min-height: 0; margin-top: 0; }
+            body.game-playing #donutDisplay { font-size: 12px; margin-top: 2px; }
+            body.game-playing #powerupDisplay { font-size: 11px; margin-top: 2px; min-height: 14px; }
+            body.game-playing #multiplierDisplay { font-size: 16px; margin-top: 2px; }
+
+            /* --- Game over --- */
             body.game-over #mobileControls,
-            body.game-over #mobileMenuNav,
-            body.game-over #mobileTouchHint {
+            body.game-over #mobileMenuNav {
                 display: none !important;
             }
+
             body.game-over #gameOver {
-                width: calc(100vw - 24px);
-                max-width: 400px;
-                padding: 28px 24px;
+                display: block !important;
+                position: fixed;
+                z-index: 40;
+                width: calc(100% - 24px);
+                max-width: 360px;
+                padding: 28px 20px;
             }
-            body.game-over .menu-panel {
-                display: none !important;
-            }
+
+            body.game-over .menu-panel,
             body.game-over #startScreen {
                 display: none !important;
             }
         }
-        @media (min-width: 901px) and (hover: hover) {
+        @media (min-width: 901px) {
+            #mobileMenuNav,
+            #mobileControls {
+                display: none !important;
+            }
             body.game-menu #shopPanel { display: flex; }
         }
     </style>
@@ -556,7 +609,7 @@
 
     <div id="startScreen">
         <h1>Jack DuBall</h1>
-        <p>Roll the 5-lane course, smash obstacles, and chase the high score.</p>
+        <p class="menu-tagline">Roll, jump, smash — chase the high score.</p>
         <div id="howToPlay">
             <strong>How to play</strong>
             Steer <b>A/D</b> or <b>◀ ▶</b> · Jump <b>Space</b> or <b>JUMP</b><br>
@@ -611,12 +664,11 @@
     </div>
 
     <nav id="mobileMenuNav" aria-label="Menu sections">
+        <button type="button" class="menu-nav-btn active" data-panel="none">Menu</button>
         <button type="button" class="menu-nav-btn" data-panel="leaderboard">Scores</button>
         <button type="button" class="menu-nav-btn" data-panel="chat">Chat</button>
-        <button type="button" class="menu-nav-btn active" data-panel="shop">Shop</button>
+        <button type="button" class="menu-nav-btn" data-panel="shop">Shop</button>
     </nav>
-
-    <p id="mobileTouchHint">◀ ▶ steer · JUMP to jump · buildings faster, trees slower</p>
 
     <script>
         function resolveApiBase() {
@@ -940,7 +992,7 @@
         let mobileSteer = 0;
         let mobileSteerLeft = false;
         let mobileSteerRight = false;
-        let mobileMenuPanel = 'shop';
+        let mobileMenuPanel = 'none';
         let jumpQueued = false;
         let airJumpsRemaining = 0;
         let magnetActive = false;
@@ -1643,8 +1695,7 @@
         }
 
         function isMobileLayout() {
-            return window.matchMedia('(max-width: 900px)').matches
-                || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+            return window.matchMedia('(max-width: 900px)').matches;
         }
 
         function syncMobileSteer() {
@@ -1670,6 +1721,13 @@
             } else if (shop) {
                 shop.style.display = '';
             }
+
+            const nav = document.getElementById('mobileMenuNav');
+            if (nav && isMobileLayout()) {
+                nav.querySelectorAll('.menu-nav-btn').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.panel === mobileMenuPanel);
+                });
+            }
         }
 
         function setupMobileMenuNav() {
@@ -1685,7 +1743,10 @@
             };
 
             nav.querySelectorAll('.menu-nav-btn').forEach((btn) => {
-                btn.addEventListener('click', () => setPanel(btn.dataset.panel || 'shop'));
+                btn.addEventListener('click', () => {
+                    const panel = btn.dataset.panel || 'none';
+                    setPanel(panel);
+                });
             });
 
             setPanel(mobileMenuPanel);
@@ -1725,6 +1786,10 @@
             bindHold(leftBtn, 'left');
             bindHold(rightBtn, 'right');
 
+            [leftBtn, rightBtn, jumpBtn].forEach((btn) => {
+                btn.style.touchAction = 'manipulation';
+            });
+
             const doJump = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1747,7 +1812,6 @@
             touchSteer = 0;
             if (username) loadProfile();
             renderer.domElement.focus();
-            document.getElementById('startScreen').style.display = 'none';
             document.getElementById('instructions').classList.add('hidden');
             gameSpeed = BASE_SPEED;
             combo = 0;
@@ -3002,7 +3066,6 @@
             touchSteer = 0;
             SoundEngine.stopMusic();
             LiveClient.sendEnd();
-            document.getElementById('gameOver').style.display = 'block';
             document.getElementById('finalScore').innerText =
                 `Final Score: ${Math.floor(score)} · +${donutsCollected} 🍩`;
             submitScore();
@@ -3042,10 +3105,9 @@
             mobileSteerRight = false;
 
             updateHUD();
-            document.getElementById('gameOver').style.display = 'none';
-            document.getElementById('startScreen').style.display = 'block';
             document.getElementById('instructions').classList.remove('hidden');
             isPlaying = false;
+            mobileMenuPanel = 'none';
             updateUILayout();
             if (username) loadProfile();
         }
