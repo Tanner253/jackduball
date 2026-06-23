@@ -12,11 +12,21 @@ import {
   itemType,
 } from "./cosmetics.js";
 
+function unwrapMongoDoc(result) {
+  if (!result) return null;
+  if (typeof result === "object" && result.value !== undefined) return result.value;
+  if (typeof result === "object" && (result.key !== undefined || result.username !== undefined)) {
+    return result;
+  }
+  return null;
+}
+
 function profileView(doc) {
+  if (!doc) return null;
   return {
     username: doc.username,
     donuts: doc.donuts ?? 0,
-    owned: doc.owned ?? [...DEFAULT_OWNED],
+    owned: [...new Set([...(doc.owned ?? DEFAULT_OWNED)])],
     equipped: { ...DEFAULT_EQUIPPED, ...(doc.equipped ?? {}) },
   };
 }
@@ -55,7 +65,8 @@ export async function bankDonuts(username, amount) {
 
   const db = await getDb();
   const key = usernameKey(cleanName);
-  const result = await db.collection("profiles").findOneAndUpdate(
+
+  await db.collection("profiles").updateOne(
     { key },
     {
       $setOnInsert: {
@@ -63,20 +74,26 @@ export async function bankDonuts(username, amount) {
         username: cleanName,
         owned: [...DEFAULT_OWNED],
         equipped: { ...DEFAULT_EQUIPPED },
+        donuts: 0,
         ts: Date.now(),
       },
       $inc: { donuts },
       $set: { username: cleanName },
     },
-    { upsert: true, returnDocument: "after" }
+    { upsert: true }
   );
 
-  const doc = result ?? (await db.collection("profiles").findOne({ key }));
+  const doc = await db.collection("profiles").findOne({ key });
   if (!doc) {
     return { ok: false, error: "Could not save donuts." };
   }
 
-  return { ok: true, banked: donuts, profile: profileView(doc) };
+  const profile = profileView(doc);
+  if (!profile) {
+    return { ok: false, error: "Could not save donuts." };
+  }
+
+  return { ok: true, banked: donuts, profile };
 }
 
 export async function buyItem(username, itemId) {
@@ -102,7 +119,7 @@ export async function buyItem(username, itemId) {
     return { ok: false, error: "Not enough donuts." };
   }
 
-  const updated = await db.collection("profiles").findOneAndUpdate(
+  const updateResult = await db.collection("profiles").findOneAndUpdate(
     { key, donuts: { $gte: item.cost }, owned: { $ne: id } },
     {
       $inc: { donuts: -item.cost },
@@ -112,6 +129,7 @@ export async function buyItem(username, itemId) {
     { returnDocument: "after" }
   );
 
+  const updated = unwrapMongoDoc(updateResult) ?? (await db.collection("profiles").findOne({ key }));
   if (!updated) {
     const fresh = await db.collection("profiles").findOne({ key });
     if ((fresh?.owned ?? []).includes(id)) {
@@ -120,7 +138,10 @@ export async function buyItem(username, itemId) {
     return { ok: false, error: "Not enough donuts." };
   }
 
-  return { ok: true, profile: profileView(updated) };
+  const profile = profileView(updated);
+  if (!profile) return { ok: false, error: "Could not update profile." };
+
+  return { ok: true, profile };
 }
 
 export async function equipItem(username, itemId) {
@@ -145,11 +166,11 @@ export async function equipItem(username, itemId) {
   }
 
   const equipped = { ...DEFAULT_EQUIPPED, ...(doc.equipped ?? {}), [slot]: id };
-  const updated = await db.collection("profiles").findOneAndUpdate(
-    { key },
-    { $set: { equipped, username: cleanName } },
-    { returnDocument: "after" }
-  );
+  await db.collection("profiles").updateOne({ key }, { $set: { equipped, username: cleanName } });
 
-  return { ok: true, profile: profileView(updated) };
+  const updated = await db.collection("profiles").findOne({ key });
+  const profile = profileView(updated);
+  if (!profile) return { ok: false, error: "Could not update profile." };
+
+  return { ok: true, profile };
 }

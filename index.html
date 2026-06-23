@@ -1142,27 +1142,53 @@
 
             const input = document.getElementById('usernameInput');
             const name = (username || input.value || '').trim().slice(0, 20);
-            if (!name) return;
+            if (!name) {
+                const status = document.getElementById('usernameStatus');
+                if (status) {
+                    status.textContent = 'Set a username and tap Save — scores only save with a name.';
+                }
+                return;
+            }
 
             if (!username) applyUsername(name);
 
-            try {
-                const res = await apiFetch('/api/leaderboard', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: name, score: finalScore, donuts: donutsToBank })
-                });
-                const data = await res.json();
-                if (data.profile) {
-                    applyProfile(data.profile);
-                }
-                if (data.leaderboard) {
-                    await renderLeaderboardRows(data.leaderboard);
-                } else {
+            const payload = { username: name, score: finalScore, donuts: donutsToBank };
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const res = await apiFetch('/api/leaderboard', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }, 4);
+                    const data = await res.json();
+
+                    if (data.profile) {
+                        applyProfile(data.profile);
+                    }
+
+                    if (data.leaderboard) {
+                        await renderLeaderboardRows(data.leaderboard);
+                    } else {
+                        loadLeaderboard();
+                    }
+
+                    if (res.ok && (data.saved || data.banked > 0 || data.ok)) {
+                        return;
+                    }
+
+                    if (attempt < 2 && [502, 503, 504].includes(res.status)) {
+                        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+                        continue;
+                    }
+                    return;
+                } catch {
+                    if (attempt < 2) {
+                        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+                        continue;
+                    }
                     loadLeaderboard();
                 }
-            } catch {
-                loadLeaderboard();
             }
         }
 

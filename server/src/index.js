@@ -61,14 +61,22 @@ app.post("/api/leaderboard", writeLimiter, async (req, res, next) => {
   try {
     const { username, score, donuts } = req.body || {};
     let profile = null;
-    const banked = Math.max(0, Math.floor(Number(donuts) || 0));
-    if (banked > 0 && username) {
-      const bank = await bankDonuts(username, banked);
-      if (bank.ok && bank.profile) profile = bank.profile;
+    let banked = 0;
+    const donutAmount = Math.max(0, Math.floor(Number(donuts) || 0));
+
+    if (donutAmount > 0 && username) {
+      try {
+        const bank = await bankDonuts(username, donutAmount);
+        if (bank.ok && bank.profile) profile = bank.profile;
+        if (bank.ok) banked = bank.banked ?? donutAmount;
+      } catch (err) {
+        console.error("bankDonuts failed:", err);
+      }
     }
+
     const result = await addScore(username, score);
     const status = result.ok || profile ? 200 : 400;
-    res.status(status).json({ ...result, configured: true, profile });
+    res.status(status).json({ ...result, configured: true, profile, banked });
   } catch (e) {
     next(e);
   }
