@@ -75,6 +75,27 @@ canvas {
     flex: 1;
 }
 
+.panel-head-leaderboard {
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.panel-head-leaderboard h2 {
+    flex: 1;
+}
+
+.leaderboard-payout-note {
+    margin: 0;
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 0.58rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    color: var(--accent);
+    text-align: right;
+}
+
 .panel-icon-btn {
     margin: 0;
     flex-shrink: 0;
