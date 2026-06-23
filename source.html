@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rolling Rampage Prototype</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #a0d8ef; /* Sky blue */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Prevent scroll on mobile */
+        }
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #scoreDisplay {
+            font-size: 42px;
+            font-weight: 900;
+            margin: 0;
+            color: #ffd700;
+            -webkit-text-stroke: 1px #000;
+        }
+        #multiplierDisplay {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff5555;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        #instructions {
+            font-size: 16px;
+            margin-top: 15px;
+            background: rgba(0,0,0,0.6);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffd700;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+            border: 2px solid #fff;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 20px;
+            cursor: pointer;
+            background: linear-gradient(180deg, #ffd700 0%, #ffaa00 100%);
+            border: 2px solid #fff;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #333;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button:hover {
+            background: linear-gradient(180deg, #ffea00 0%, #ffcc00 100%);
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(2px);
+        }
+        #loadingMsg {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+    <!-- Include Three.js and GLTFLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+
+    <div id="ui">
+        <p id="scoreDisplay">0</p>
+        <p id="multiplierDisplay">x1 COMBO!</p>
+        <div id="instructions">
+            <strong>Controls:</strong><br>
+            A / D or Arrow Keys: Steer<br>
+            Tap / Click sides of screen to steer<br>
+            <em>Smash everything except the gray spikes!</em>
+        </div>
+    </div>
+
+    <div id="loadingMsg">Checking for fatguy.glb...</div>
+
+    <div id="gameOver">
+        <h1 style="margin:0 0 10px 0; color: #ff5555;">CRASHED!</h1>
+        <p id="finalScore" style="font-size: 24px;">Score: 0</p>
+        <button onclick="resetGame()">Play Again</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer;
+        let playerGroup, playerMesh;
+        let terrainGroup;
+        let obstacles = [];
+        let particles = [];
+        
+        let score = 0;
+        let combo = 1;
+        let comboTimer = 0;
+        let gameSpeed = 0.6;
+        let isGameOver = false;
+        
+        // Input tracking
+        const keys = { a: false, d: false, ArrowLeft: false, ArrowRight: false };
+        let touchX = null;
+
+        // Constants
+        const BOUNDARY = 12; // Wider path
+        const PLAYER_RADIUS = 2;
+        const BASE_SPEED = 0.6;
+
+        init();
+        animate();
+
+        function init() {
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xa0d8ef);
+            scene.fog = new THREE.Fog(0xa0d8ef, 30, 120);
+
+            // Camera Setup (High angle, following behind)
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 15, 25);
+            camera.lookAt(0, 0, -10);
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(20, 40, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.top = 40;
+            dirLight.shadow.camera.bottom = -40;
+            dirLight.shadow.camera.left = -40;
+            dirLight.shadow.camera.right = 40;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            // Create Groups
+            playerGroup = new THREE.Group();
+            scene.add(playerGroup);
+            
+            terrainGroup = new THREE.Group();
+            scene.add(terrainGroup);
+
+            // Initialize game components
+            createTerrain();
+            loadPlayerModel();
+            
+            // Initial obstacles
+            for(let i=0; i<5; i++) {
+                spawnObstacle(-30 - (i*20));
+            }
+
+            // Event Listeners
+            window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+            window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // Touch/Mouse Controls
+            window.addEventListener('touchstart', handleTouchStart, {passive: false});
+            window.addEventListener('touchend', handleTouchEnd);
+            window.addEventListener('mousedown', handleTouchStart);
+            window.addEventListener('mouseup', handleTouchEnd);
+        }
+
+        function loadPlayerModel() {
+            const loadingMsg = document.getElementById('loadingMsg');
+            loadingMsg.innerText = "Constructing Jack Duval...";
+
+            playerMesh = new THREE.Group();
+            
+            // Default material in case the texture fails to load locally
+            const skinMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xdeb887, // Default skin/khaki tone fallback
+                roughness: 0.7,
+                metalness: 0.1
+            });
+
+            // 1. Torso (The big belly) - Squished slightly to look tucked
+            const torsoGeo = new THREE.SphereGeometry(1.7, 32, 32);
+            torsoGeo.scale(1, 0.9, 1.1); 
+            const torso = new THREE.Mesh(torsoGeo, skinMaterial);
+            torso.castShadow = true;
+            torso.receiveShadow = true;
+            playerMesh.add(torso);
+
+            // 2. Head (Tucked forward and resting on the belly)
+            const headGeo = new THREE.SphereGeometry(0.7, 32, 32);
+            const head = new THREE.Mesh(headGeo, skinMaterial);
+            head.position.set(0, 1.1, 1.3); 
+            head.castShadow = true;
+            head.receiveShadow = true;
+            playerMesh.add(head);
+
+            // 3. Arms (Cylinders hugging the sides of the belly - replacing Capsule for r128 compatibility)
+            const armGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.8, 16);
+            
+            const leftArm = new THREE.Mesh(armGeo, skinMaterial);
+            leftArm.position.set(-1.6, 0.2, 0.6);
+            leftArm.rotation.x = Math.PI / 2.2; // Pointing forward
+            leftArm.rotation.z = -Math.PI / 8;  // Tilted inward towards belly
+            leftArm.castShadow = true;
+            leftArm.receiveShadow = true;
+            playerMesh.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeo, skinMaterial);
+            rightArm.position.set(1.6, 0.2, 0.6);
+            rightArm.rotation.x = Math.PI / 2.2;
+            rightArm.rotation.z = Math.PI / 8;
+            rightArm.castShadow = true;
+            rightArm.receiveShadow = true;
+            playerMesh.add(rightArm);
+
+            // 4. Legs (Tucked under the front)
+            const legGeo = new THREE.CylinderGeometry(0.45, 0.45, 1.2, 16);
+            
+            const leftLeg = new THREE.Mesh(legGeo, skinMaterial);
+            leftLeg.position.set(-0.8, -1.0, 1.1);
+            leftLeg.rotation.x = Math.PI / 3;
+            leftLeg.castShadow = true;
+            leftLeg.receiveShadow = true;
+            playerMesh.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeo, skinMaterial);
+            rightLeg.position.set(0.8, -1.0, 1.1);
+            rightLeg.rotation.x = Math.PI / 3;
+            rightLeg.castShadow = true;
+            rightLeg.receiveShadow = true;
+            playerMesh.add(rightLeg);
+
+            // Add constructed player to the scene group immediately so he is never invisible
+            playerGroup.add(playerMesh);
+            playerGroup.position.set(0, PLAYER_RADIUS, 0);
+
+            const textureLoader = new THREE.TextureLoader();
+            
+            // Try to load the image and paint it over our custom shapes
+            textureLoader.load('duveball.jpg', (texture) => {
+                skinMaterial.map = texture;
+                skinMaterial.color.setHex(0xffffff); // Remove base color tint once texture loads
+                skinMaterial.needsUpdate = true;
+                setTimeout(() => loadingMsg.style.display = 'none', 1000);
+            }, undefined, (error) => {
+                loadingMsg.innerText = "Texture blocked by browser (CORS) or missing. Using default colors.";
+                setTimeout(() => loadingMsg.style.display = 'none', 3000);
+                console.warn("Texture loading error:", error);
+            });
+        }
+
+        function createTerrain() {
+            // Main Path
+            const pathGeo = new THREE.PlaneGeometry(BOUNDARY * 2, 400);
+            const pathMat = new THREE.MeshStandardMaterial({ color: 0x8fb87e, roughness: 1.0 }); // Muted green
+            const path = new THREE.Mesh(pathGeo, pathMat);
+            path.rotation.x = -Math.PI / 2;
+            path.receiveShadow = true;
+            terrainGroup.add(path);
+
+            // Side Mountains (Low poly effect)
+            const wallGeo = new THREE.BoxGeometry(40, 20, 400);
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x6e7f80, roughness: 0.9, flatShading: true });
+            
+            const leftWall = new THREE.Mesh(wallGeo, wallMat);
+            leftWall.position.set(-BOUNDARY - 20, 5, 0);
+            leftWall.receiveShadow = true;
+            terrainGroup.add(leftWall);
+
+            const rightWall = new THREE.Mesh(wallGeo, wallMat);
+            rightWall.position.set(BOUNDARY + 20, 5, 0);
+            rightWall.receiveShadow = true;
+            terrainGroup.add(rightWall);
+        }
+
+        function spawnObstacle(startZ = -100) {
+            // Types: 0 = Tree (Smashable), 1 = House (Smashable), 2 = Spike (Death)
+            const typeProb = Math.random();
+            let type = 0;
+            if (typeProb > 0.6) type = 1;
+            if (typeProb > 0.85) type = 2; // 15% chance of deadly spike
+
+            const meshGroup = new THREE.Group();
+            let boundingRadius = 1;
+
+            if (type === 0) {
+                // Low poly Tree
+                boundingRadius = 1.5;
+                const trunk = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.4, 0.6, 2, 5),
+                    new THREE.MeshStandardMaterial({ color: 0x5c4033, flatShading: true })
+                );
+                trunk.position.y = 1;
+                trunk.castShadow = true;
+                
+                const leaves = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.8, 4, 5),
+                    new THREE.MeshStandardMaterial({ color: 0x228b22, flatShading: true })
+                );
+                leaves.position.y = 3.5;
+                leaves.castShadow = true;
+                
+                meshGroup.add(trunk);
+                meshGroup.add(leaves);
+                meshGroup.userData = { type: 'destructible', points: 50, color: 0x228b22 };
+            } 
+            else if (type === 1) {
+                // Low poly House/Box
+                boundingRadius = 2;
+                const house = new THREE.Mesh(
+                    new THREE.BoxGeometry(3, 3, 3),
+                    new THREE.MeshStandardMaterial({ color: 0xcd5c5c, flatShading: true })
+                );
+                house.position.y = 1.5;
+                house.castShadow = true;
+                
+                const roof = new THREE.Mesh(
+                    new THREE.ConeGeometry(2.5, 2, 4),
+                    new THREE.MeshStandardMaterial({ color: 0x4a4a4a, flatShading: true })
+                );
+                roof.position.y = 4;
+                roof.rotation.y = Math.PI / 4;
+                roof.castShadow = true;
+
+                meshGroup.add(house);
+                meshGroup.add(roof);
+                meshGroup.userData = { type: 'destructible', points: 100, color: 0xcd5c5c };
+            }
+            else if (type === 2) {
+                // Deadly Spike
+                boundingRadius = 1.5;
+                const spike = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.5, 4, 6),
+                    new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2, flatShading: true })
+                );
+                spike.position.y = 2;
+                spike.castShadow = true;
+                meshGroup.add(spike);
+                meshGroup.userData = { type: 'deadly' };
+            }
+
+            // Position randomly on the path
+            const randomX = (Math.random() - 0.5) * (BOUNDARY * 1.8);
+            meshGroup.position.set(randomX, 0, startZ);
+            meshGroup.userData.radius = boundingRadius;
+            meshGroup.userData.active = true;
+
+            scene.add(meshGroup);
+            obstacles.push(meshGroup);
+        }
+
+        function createExplosion(position, color) {
+            const particleCount = 15;
+            const geo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const mat = new THREE.MeshStandardMaterial({ color: color, flatShading: true });
+
+            for(let i=0; i<particleCount; i++) {
+                const particle = new THREE.Mesh(geo, mat);
+                particle.position.copy(position);
+                particle.position.y += 1; // start slightly above ground
+                
+                // Random velocity
+                particle.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.8,
+                    Math.random() * 0.8 + 0.2,
+                    (Math.random() - 0.5) * 0.8
+                );
+                
+                scene.add(particle);
+                particles.push({ mesh: particle, life: 1.0 });
+            }
+        }
+
+        function updateParticles() {
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.mesh.position.add(p.mesh.userData.velocity);
+                p.mesh.userData.velocity.y -= 0.05; // gravity
+                
+                p.mesh.rotation.x += 0.1;
+                p.mesh.rotation.y += 0.1;
+                
+                p.life -= 0.02;
+                p.mesh.scale.setScalar(p.life);
+
+                if (p.life <= 0 || p.mesh.position.y < -2) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function handleTouchStart(e) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            touchX = clientX;
+        }
+        function handleTouchEnd(e) {
+            touchX = null;
+        }
+
+        function updatePlayer() {
+            const moveSpeed = 0.4 + (gameSpeed * 0.2); // faster side movement as game speeds up
+            
+            // Keyboard logic
+            let movingLeft = keys.a || keys.ArrowLeft;
+            let movingRight = keys.d || keys.ArrowRight;
+
+            // Touch logic
+            if (touchX !== null) {
+                if (touchX < window.innerWidth / 2) movingLeft = true;
+                else movingRight = true;
+            }
+
+            if (movingLeft && playerGroup.position.x > -BOUNDARY) {
+                playerGroup.position.x -= moveSpeed;
+            }
+            if (movingRight && playerGroup.position.x < BOUNDARY) {
+                playerGroup.position.x += moveSpeed;
+            }
+
+            // Animate rolling based on speed
+            if (playerMesh) {
+                playerMesh.rotation.x -= gameSpeed / PLAYER_RADIUS; 
+                // Slight tilt when turning
+                if (movingLeft) playerMesh.rotation.z = THREE.MathUtils.lerp(playerMesh.rotation.z, 0.2, 0.1);
+                else if (movingRight) playerMesh.rotation.z = THREE.MathUtils.lerp(playerMesh.rotation.z, -0.2, 0.1);
+                else playerMesh.rotation.z = THREE.MathUtils.lerp(playerMesh.rotation.z, 0, 0.1);
+            }
+        }
+
+        function updateObstacles() {
+            // Spawn distance logic
+            if (Math.random() < 0.06 + (gameSpeed * 0.02)) {
+                spawnObstacle(-120);
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                
+                // Move obstacle towards camera
+                obs.position.z += gameSpeed;
+
+                // Collision Check
+                if (obs.userData.active && obs.position.z > playerGroup.position.z - 3 && obs.position.z < playerGroup.position.z + 3) {
+                    const distance = playerGroup.position.distanceTo(obs.position);
+                    
+                    if (distance < PLAYER_RADIUS + obs.userData.radius) {
+                        if (obs.userData.type === 'destructible') {
+                            // SMASH!
+                            obs.userData.active = false;
+                            createExplosion(obs.position, obs.userData.color);
+                            scene.remove(obs);
+                            obstacles.splice(i, 1);
+                            
+                            // Score & Combo logic
+                            comboTimer = 100; // Reset combo timer
+                            score += obs.userData.points * combo;
+                            combo++;
+                            
+                            updateHUD();
+                            
+                            // Screen Shake effect
+                            camera.position.y += 0.5;
+                            setTimeout(() => camera.position.y -= 0.5, 50);
+
+                        } else if (obs.userData.type === 'deadly') {
+                            // CRASH!
+                            gameOver();
+                        }
+                    }
+                }
+
+                // Cleanup passed objects
+                if (obs.position.z > 30) {
+                    scene.remove(obs);
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Handle Combo Decay
+            if (comboTimer > 0) {
+                comboTimer--;
+                if (comboTimer === 0) {
+                    combo = 1;
+                    updateHUD();
+                }
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreDisplay').innerText = Math.floor(score);
+            
+            const multDisplay = document.getElementById('multiplierDisplay');
+            if (combo > 1) {
+                multDisplay.innerText = `x${combo} COMBO!`;
+                multDisplay.style.opacity = 1;
+                multDisplay.style.transform = 'scale(1.2)';
+                setTimeout(() => multDisplay.style.transform = 'scale(1)', 100);
+            } else {
+                multDisplay.style.opacity = 0;
+            }
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            document.getElementById('gameOver').style.display = 'block';
+            document.getElementById('finalScore').innerText = `Final Score: ${Math.floor(score)}`;
+        }
+
+        function resetGame() {
+            // Clear all obstacles
+            obstacles.forEach(obs => scene.remove(obs));
+            obstacles = [];
+            
+            // Clear particles
+            particles.forEach(p => scene.remove(p.mesh));
+            particles = [];
+
+            // Reset player position
+            playerGroup.position.set(0, PLAYER_RADIUS, 0);
+            if(playerMesh) playerMesh.rotation.set(0,0,0);
+            
+            // Reset stats
+            score = 0;
+            combo = 1;
+            comboTimer = 0;
+            gameSpeed = BASE_SPEED;
+            isGameOver = false;
+            
+            updateHUD();
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Respawn initial obstacles
+            for(let i=0; i<5; i++) {
+                spawnObstacle(-30 - (i*20));
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isGameOver) {
+                updatePlayer();
+                updateObstacles();
+                updateParticles();
+                
+                // Infinite runner: Texture scrolling simulation
+                terrainGroup.children.forEach(child => {
+                    if(child.geometry.type === "PlaneGeometry") {
+                       // Optional: animate texture offset here if we add grass texture
+                    }
+                });
+
+                // Gradually increase speed
+                gameSpeed += 0.0002; 
+                
+                // Passive score for surviving
+                score += (gameSpeed * 0.1);
+                document.getElementById('scoreDisplay').innerText = Math.floor(score);
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
