@@ -69,46 +69,41 @@
             transition: opacity 0.2s, transform 0.1s;
         }
         #instructions {
-            font-size: 14px;
-            margin-top: 15px;
+            font-size: 13px;
+            margin-top: 12px;
             background: rgba(0,0,0,0.6);
-            padding: 14px 16px;
+            padding: 10px 12px;
             border-radius: 8px;
             border-left: 4px solid #ffd700;
-            max-width: 300px;
-            line-height: 1.45;
+            max-width: 260px;
+            line-height: 1.4;
             transition: opacity 0.5s;
         }
-        #instructions.hidden { opacity: 0; }
-        .guide-block { margin-top: 10px; }
-        .guide-block:first-child { margin-top: 0; }
-        .guide-block strong {
+        #instructions.hidden,
+        body.game-playing #instructions,
+        body.game-menu #instructions {
+            display: none;
+        }
+        #howToPlay strong,
+        #instructions strong {
             display: block;
             color: #ffd700;
-            font-size: 12px;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 4px;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
         }
-        .guide-block ul {
-            margin: 0;
-            padding-left: 16px;
-        }
-        .guide-block li { margin-bottom: 3px; }
         #howToPlay {
-            text-align: left;
-            margin: 12px 0 6px;
-            padding: 12px 14px;
+            text-align: center;
+            margin: 10px 0 4px;
+            padding: 10px 12px;
             background: rgba(255,255,255,0.06);
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.15);
-            font-size: 0.84rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.12);
+            font-size: 0.82rem;
             line-height: 1.45;
-            max-height: min(34vh, 260px);
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            opacity: 0.92;
         }
-        #howToPlay .guide-block strong { font-size: 11px; }
         #startScreen {
             position: absolute;
             top: 3%;
@@ -461,7 +456,7 @@
                 max-width: none;
                 padding: 14px 16px;
                 border-radius: 12px;
-                max-height: min(52vh, 420px);
+                max-height: min(44vh, 360px);
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
             }
@@ -547,37 +542,10 @@
         <p id="powerupDisplay"></p>
         <p id="multiplierDisplay">x1 COMBO!</p>
         <div id="instructions">
-            <div class="guide-block">
-                <strong>Controls</strong>
-                <ul>
-                    <li><strong>A / D</strong> or <strong>← / →</strong> — steer across 5 lanes</li>
-                    <li><strong>Space</strong> — jump (through donut hoops)</li>
-                    <li>Mobile: hold <strong>◀ ▶</strong> to steer, tap <strong>JUMP</strong> or double-tap the screen</li>
-                </ul>
-            </div>
-            <div class="guide-block">
-                <strong>Course</strong>
-                <ul>
-                    <li><strong>Buildings</strong> — smash to <strong>speed up</strong></li>
-                    <li><strong>Trees</strong> — smash and you <strong>slow down</strong></li>
-                    <li><strong>Donut hoops</strong> — jump through for score &amp; combo</li>
-                </ul>
-            </div>
-            <div class="guide-block">
-                <strong>Donuts 🍩</strong>
-                <ul>
-                    <li>Collected from hoops during runs</li>
-                    <li>Banked to your profile with a username</li>
-                    <li>Spend in the shop on <strong>cosmetics</strong> — nametags &amp; trails</li>
-                </ul>
-            </div>
-            <div class="guide-block">
-                <strong>Pickups</strong>
-                <ul>
-                    <li><strong>NEET</strong> — 15s magnet pulls donut hoops toward you</li>
-                    <li><strong>Trollface</strong> — extra mid-air jump (stacks if you grab more)</li>
-                </ul>
-            </div>
+            <strong>How to play</strong>
+            Steer <b>A/D</b> or <b>◀ ▶</b> · Jump <b>Space</b> or <b>JUMP</b><br>
+            <b>Buildings</b> faster · <b>Trees</b> slower · Hoops = score<br>
+            🍩 cosmetics · <b>NEET</b> magnet · <b>Trollface</b> extra jump
         </div>
     </div>
 
@@ -587,37 +555,10 @@
         <h1>Jack DuBall</h1>
         <p>Roll the 5-lane course, smash obstacles, and chase the high score.</p>
         <div id="howToPlay">
-            <div class="guide-block">
-                <strong>Controls</strong>
-                <ul>
-                    <li><strong>A / D</strong> or <strong>← / →</strong> — steer</li>
-                    <li><strong>Space</strong> — jump through donut hoops</li>
-                    <li>Mobile: <strong>◀ ▶</strong> steer · <strong>JUMP</strong> or double-tap screen</li>
-                </ul>
-            </div>
-            <div class="guide-block">
-                <strong>Obstacles</strong>
-                <ul>
-                    <li><strong>Buildings</strong> — smash them to <strong>speed up</strong></li>
-                    <li><strong>Trees</strong> — smash them and you <strong>slow down</strong></li>
-                    <li><strong>Donut hoops</strong> — jump through for points &amp; combo</li>
-                </ul>
-            </div>
-            <div class="guide-block">
-                <strong>Donuts 🍩</strong>
-                <ul>
-                    <li>From hoops each run — not for score, for <strong>cosmetics</strong></li>
-                    <li>Set a username to bank them after each run</li>
-                    <li>Spend in the shop on nametags &amp; particle trails</li>
-                </ul>
-            </div>
-            <div class="guide-block">
-                <strong>Pickups</strong>
-                <ul>
-                    <li><strong>NEET</strong> — 15 second magnet that pulls hoops to you</li>
-                    <li><strong>Trollface</strong> — one bonus jump while airborne (grab more to stack)</li>
-                </ul>
-            </div>
+            <strong>How to play</strong>
+            Steer <b>A/D</b> or <b>◀ ▶</b> · Jump <b>Space</b> or <b>JUMP</b><br>
+            <b>Buildings</b> faster · <b>Trees</b> slower · Hoops = score<br>
+            🍩 donuts = shop cosmetics · <b>NEET</b> magnet · <b>Trollface</b> extra jump
         </div>
         <div id="usernameRow">
             <input id="usernameInput" maxlength="20" placeholder="Choose a username" autocomplete="off">
@@ -672,7 +613,7 @@
         <button type="button" class="menu-nav-btn active" data-panel="shop">Shop</button>
     </nav>
 
-    <p id="mobileTouchHint">◀ ▶ steer · JUMP or double-tap · buildings = faster, trees = slower</p>
+    <p id="mobileTouchHint">◀ ▶ steer · JUMP to jump · buildings faster, trees slower</p>
 
     <script>
         function resolveApiBase() {
