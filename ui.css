@@ -1104,9 +1104,25 @@ body.game-over #gameOver { display: block !important; }
     #mobileMenuNav,
     #mobileControls { display: none !important; }
 
+    body.game-menu #startScreen {
+        top: 118px;
+        bottom: auto;
+        transform: none;
+        max-height: calc(100vh - 134px);
+        overflow-y: auto;
+    }
+
+    body.game-menu:not(.shop-collapsed) #startScreen {
+        max-height: calc(100vh - 42vh - 150px);
+    }
+
     body.game-menu:not(.shop-collapsed) #shopPanel { display: flex; }
 
     body.game-menu.shop-collapsed #shopExpandBtn { display: flex; }
+
+    #shopPanel {
+        max-height: min(36vh, 340px);
+    }
 
     body:not(.chat-open) #chatPanel { display: none !important; }
 
