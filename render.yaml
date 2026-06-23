@@ -1,0 +1,21 @@
+# Render Blueprint — deploys the jackduball-api server.
+# MongoDB: create a free M0 cluster on MongoDB Atlas, then paste MONGODB_URI
+# in the Render dashboard when prompted during blueprint setup.
+services:
+  - type: web
+    name: jackduball-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: jackduball
+      - key: ALLOWED_ORIGINS
+        value: https://jackduball.vercel.app
+      - key: NODE_VERSION
+        value: "22"
