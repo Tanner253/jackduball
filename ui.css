@@ -175,6 +175,12 @@ canvas {
     transition: opacity 0.2s, transform 0.15s;
 }
 
+/* Run HUD only while playing — keeps menu / game-over panels clear */
+body.game-menu #ui,
+body.game-over #ui {
+    display: none !important;
+}
+
 #instructions {
     display: none;
 }
@@ -1105,15 +1111,15 @@ body.game-over #gameOver { display: block !important; }
     #mobileControls { display: none !important; }
 
     body.game-menu #startScreen {
-        top: 118px;
+        top: max(16px, env(safe-area-inset-top));
         bottom: auto;
         transform: none;
-        max-height: calc(100vh - 134px);
+        max-height: calc(100vh - 32px);
         overflow-y: auto;
     }
 
     body.game-menu:not(.shop-collapsed) #startScreen {
-        max-height: calc(100vh - 42vh - 150px);
+        max-height: calc(100vh - min(36vh, 340px) - 48px);
     }
 
     body.game-menu:not(.shop-collapsed) #shopPanel { display: flex; }
