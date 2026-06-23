@@ -62,7 +62,7 @@ API runs on http://localhost:4000
 npx vercel --prod
 ```
 
-Production API URL is already set to `https://jackduball.onrender.com` in `index.html`.
+Production API calls go through same-origin `/api/*` on Vercel (proxied to Render in `vercel.json`). Live WebSocket still connects directly to Render.
 
 ## API
 

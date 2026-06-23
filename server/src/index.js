@@ -29,12 +29,16 @@ const allowed = (process.env.ALLOWED_ORIGINS ?? defaultOrigins.join(","))
 app.use(
   cors({
     origin(origin, cb) {
-      const ok =
-        !origin ||
-        allowed.includes(origin) ||
-        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-        /\.vercel\.app$/.test(new URL(origin).hostname);
-      cb(ok ? null : new Error("CORS: origin not allowed"), ok);
+      if (!origin) return cb(null, true);
+      try {
+        const ok =
+          allowed.includes(origin) ||
+          /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+          /\.vercel\.app$/.test(new URL(origin).hostname);
+        cb(null, ok);
+      } catch {
+        cb(null, false);
+      }
     },
   })
 );

@@ -585,12 +585,46 @@
     <p id="mobileTouchHint">Double-tap screen to jump</p>
 
     <script>
-        const API_URL = (
-            window.JACKDUBALL_API_URL ||
-            ((location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-                ? 'http://localhost:4000'
-                : 'https://jackduball.onrender.com')
-        ).replace(/\/$/, '');
+        function resolveApiBase() {
+            if (window.JACKDUBALL_API_URL) return String(window.JACKDUBALL_API_URL).replace(/\/$/, '');
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                return 'http://localhost:4000';
+            }
+            // Same-origin /api/* proxied to Render via vercel.json (avoids CORS + ad-blockers)
+            return location.origin;
+        }
+
+        function resolveLiveBase() {
+            if (window.JACKDUBALL_LIVE_URL) return String(window.JACKDUBALL_LIVE_URL).replace(/\/$/, '');
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                return 'http://localhost:4000';
+            }
+            return 'https://jackduball.onrender.com';
+        }
+
+        const API_URL = resolveApiBase();
+        const LIVE_URL = resolveLiveBase();
+
+        async function apiFetch(path, options = {}, retries = 3) {
+            const url = `${API_URL}${path}`;
+            let lastErr = null;
+            for (let attempt = 0; attempt < retries; attempt++) {
+                try {
+                    const res = await fetch(url, options);
+                    if ([502, 503, 504].includes(res.status) && attempt < retries - 1) {
+                        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+                        continue;
+                    }
+                    return res;
+                } catch (err) {
+                    lastErr = err;
+                    if (attempt < retries - 1) {
+                        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+                    }
+                }
+            }
+            throw lastErr || new Error('API unreachable');
+        }
 
         let scene, camera, renderer;
         let playerGroup, playerMesh;
@@ -748,7 +782,7 @@
             open() {
                 if (!this.wanted || this.ws) return;
                 try {
-                    this.ws = new WebSocket(`${API_URL.replace(/^http/, 'ws')}/live`);
+                    this.ws = new WebSocket(`${LIVE_URL.replace(/^http/, 'ws')}/live`);
                 } catch {
                     this.ws = null;
                     return;
@@ -1243,7 +1277,7 @@
                 return;
             }
             try {
-                const res = await fetch(`${API_URL}/api/profile?username=${encodeURIComponent(username)}`);
+                const res = await apiFetch(`/api/profile?username=${encodeURIComponent(username)}`);
                 const data = await res.json();
                 if (data.ok && data.profile) {
                     applyProfile(data.profile);
@@ -1259,7 +1293,7 @@
         async function buyCosmetic(itemId) {
             if (!username) return;
             try {
-                const res = await fetch(`${API_URL}/api/shop/buy`, {
+                const res = await apiFetch('/api/shop/buy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, itemId })
@@ -1278,7 +1312,7 @@
         async function equipCosmetic(itemId) {
             if (!username) return;
             try {
-                const res = await fetch(`${API_URL}/api/shop/equip`, {
+                const res = await apiFetch('/api/shop/equip', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, itemId })
@@ -1338,23 +1372,39 @@
             });
         }
 
-        async function loadLeaderboard() {
+        let leaderboardLoadAttempts = 0;
+
+        async function loadLeaderboard(isRetry = false) {
             const empty = document.getElementById('leaderboardEmpty');
+            if (!isRetry) leaderboardLoadAttempts = 0;
+            empty.style.display = 'block';
+            empty.textContent = leaderboardLoadAttempts > 0
+                ? `Connecting to server… (${leaderboardLoadAttempts + 1}/5)`
+                : 'Loading scores...';
             try {
-                const res = await fetch(`${API_URL}/api/leaderboard`);
+                const res = await apiFetch('/api/leaderboard', {}, 4);
                 const data = await res.json();
+                if (!res.ok || data.ok === false) {
+                    throw new Error(data.error || `HTTP ${res.status}`);
+                }
+                leaderboardLoadAttempts = 0;
                 const rows = data.leaderboard || [];
                 if (!rows.length) {
-                    empty.style.display = 'block';
                     empty.textContent = 'No scores yet — be the first!';
                     document.getElementById('leaderboardList').innerHTML = '';
                     return;
                 }
                 await renderLeaderboardRows(rows);
             } catch {
+                leaderboardLoadAttempts++;
                 empty.style.display = 'block';
-                empty.textContent = 'Leaderboard unavailable — is the Render API running?';
                 document.getElementById('leaderboardList').innerHTML = '';
+                if (leaderboardLoadAttempts < 5) {
+                    empty.textContent = `Connecting to server… (${leaderboardLoadAttempts}/5)`;
+                    setTimeout(() => loadLeaderboard(true), 3000);
+                } else {
+                    empty.textContent = 'Leaderboard unavailable — API may be waking up. Try refresh in a moment.';
+                }
             }
         }
 
@@ -1369,7 +1419,7 @@
             if (!username) applyUsername(name);
 
             try {
-                const res = await fetch(`${API_URL}/api/leaderboard`, {
+                const res = await apiFetch('/api/leaderboard', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: name, score: finalScore, donuts: donutsCollected })
