@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Jack DuBall — Rolling Rampage</title>
     <style>
         * { box-sizing: border-box; }
@@ -12,6 +12,8 @@
             background-color: #87ceeb;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
         #gameCanvas,
         canvas {
@@ -215,7 +217,7 @@
             border: 1px solid #666;
             background: rgba(255,255,255,0.95);
             color: #222;
-            font-size: 14px;
+            font-size: 16px;
         }
         #chatForm button, #usernameRow button {
             margin-top: 0;
@@ -327,64 +329,182 @@
         }
         #mobileControls {
             display: none;
-            position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            gap: 16px;
-            z-index: 15;
+            position: fixed;
+            bottom: max(12px, env(safe-area-inset-bottom));
+            left: 0;
+            right: 0;
+            padding: 0 16px;
+            gap: 12px;
+            z-index: 25;
             pointer-events: auto;
             touch-action: manipulation;
+            justify-content: space-between;
+            align-items: flex-end;
         }
         #mobileControls button {
-            width: 72px;
-            height: 72px;
+            width: 76px;
+            height: 76px;
             margin: 0;
             padding: 0;
             border-radius: 50%;
             font-size: 26px;
             line-height: 1;
-            background: rgba(0, 0, 0, 0.55);
+            background: rgba(0, 0, 0, 0.62);
             color: #ffd700;
             border: 2px solid rgba(255, 255, 255, 0.85);
             box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
         #mobileControls button.active {
-            background: rgba(255, 215, 0, 0.35);
-            transform: scale(0.95);
+            background: rgba(255, 215, 0, 0.4);
+            transform: scale(0.94);
         }
         #jumpBtn {
-            width: 84px;
-            height: 84px;
-            font-size: 22px;
+            width: 88px;
+            height: 88px;
+            font-size: 18px;
             font-weight: 900;
+            letter-spacing: 0.02em;
         }
-        @media (hover: none), (max-width: 900px) {
-            #mobileControls { display: flex; align-items: center; }
+        #mobileMenuNav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 22;
+            padding: 8px 10px max(10px, env(safe-area-inset-bottom));
+            gap: 8px;
+            background: linear-gradient(180deg, transparent, rgba(0,0,0,0.75) 35%);
+            pointer-events: auto;
+        }
+        #mobileMenuNav .menu-nav-btn {
+            flex: 1;
+            margin: 0;
+            padding: 10px 6px;
+            font-size: 13px;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 8px;
+            text-transform: none;
+            box-shadow: none;
+        }
+        #mobileMenuNav .menu-nav-btn.active {
+            background: rgba(255, 215, 0, 0.35);
+            color: #ffd700;
+            border-color: #ffd700;
+        }
+        #mobileTouchHint {
+            display: none;
+            position: fixed;
+            bottom: max(110px, calc(88px + env(safe-area-inset-bottom)));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            font-size: 12px;
+            color: rgba(255,255,255,0.75);
+            background: rgba(0,0,0,0.45);
+            padding: 6px 12px;
+            border-radius: 999px;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        @media (hover: none) and (pointer: coarse), (max-width: 900px) {
             #instructions { display: none; }
-            #leaderboardPanel {
-                top: auto;
-                bottom: 120px;
+            #loadingMsg {
+                bottom: max(12px, env(safe-area-inset-bottom));
+                left: 12px;
+                right: auto;
+            }
+
+            /* Main menu: compact header + tabbed panels */
+            body.game-menu #startScreen {
+                position: fixed;
+                top: max(8px, env(safe-area-inset-top));
+                left: 10px;
                 right: 10px;
-                width: min(200px, 42vw);
-                max-height: 28vh;
-                padding: 10px;
+                transform: none;
+                width: auto;
+                max-width: none;
+                padding: 14px 16px;
+                border-radius: 12px;
+                max-height: min(42vh, 340px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
             }
-            #chatPanel {
-                bottom: 120px;
+            body.game-menu #startScreen h1 { font-size: 1.5rem; }
+            body.game-menu #startScreen p { font-size: 0.88rem; }
+            body.game-menu #startScreen button { width: 100%; margin-top: 10px; }
+            body.game-menu #usernameRow { flex-direction: column; }
+            body.game-menu #usernameRow button { width: 100%; }
+
+            body.game-menu #mobileMenuNav {
+                display: flex;
+            }
+            body.game-menu .menu-panel {
+                display: none;
+                position: fixed;
                 left: 10px;
-                right: auto;
-                width: min(260px, 55vw);
-                height: 180px;
-            }
-            #shopPanel {
-                bottom: auto;
+                right: 10px;
                 top: auto;
-                left: 10px;
-                right: auto;
-                width: min(260px, 55vw);
-                max-height: 24vh;
+                bottom: calc(58px + env(safe-area-inset-bottom));
+                width: auto;
+                max-height: min(36vh, 280px);
+                padding: 12px;
+                overflow: hidden;
             }
+            body.game-menu.panel-leaderboard #leaderboardPanel { display: flex; }
+            body.game-menu.panel-chat #chatPanel { display: flex; }
+            body.game-menu.panel-shop #shopPanel { display: flex; }
+
+            body.game-menu #leaderboardPanel { max-height: min(36vh, 280px); }
+            body.game-menu #chatPanel { height: min(36vh, 280px); }
+            body.game-menu #shopPanel { max-height: min(36vh, 280px); }
+
+            /* During gameplay: HUD + controls only */
+            body.game-playing #startScreen,
+            body.game-playing #mobileMenuNav,
+            body.game-playing .menu-panel {
+                display: none !important;
+            }
+            body.game-playing #mobileControls {
+                display: flex;
+            }
+            body.game-playing #mobileTouchHint {
+                display: block;
+            }
+            body.game-playing #ui {
+                top: max(8px, env(safe-area-inset-top));
+                left: 10px;
+                right: 10px;
+            }
+            body.game-playing #scoreDisplay { font-size: 32px; }
+            body.game-playing #donutDisplay { font-size: 15px; }
+            body.game-playing #powerupDisplay { font-size: 12px; }
+
+            /* Game over */
+            body.game-over #mobileControls,
+            body.game-over #mobileMenuNav,
+            body.game-over #mobileTouchHint {
+                display: none !important;
+            }
+            body.game-over #gameOver {
+                width: calc(100vw - 24px);
+                max-width: 400px;
+                padding: 28px 24px;
+            }
+            body.game-over .menu-panel {
+                display: none !important;
+            }
+            body.game-over #startScreen {
+                display: none !important;
+            }
+        }
+        @media (min-width: 901px) and (hover: hover) {
+            body.game-menu #shopPanel { display: flex; }
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -458,6 +578,14 @@
         <button id="jumpBtn" type="button" aria-label="Jump">JUMP</button>
         <button id="steerRight" type="button" aria-label="Steer right">▶</button>
     </div>
+
+    <nav id="mobileMenuNav" aria-label="Menu sections">
+        <button type="button" class="menu-nav-btn" data-panel="leaderboard">Scores</button>
+        <button type="button" class="menu-nav-btn" data-panel="chat">Chat</button>
+        <button type="button" class="menu-nav-btn active" data-panel="shop">Shop</button>
+    </nav>
+
+    <p id="mobileTouchHint">Double-tap screen to jump</p>
 
     <script>
         const API_URL = (
@@ -577,13 +705,17 @@
         };
 
         const TRAIL_DEFS = {
-            spark: { color: 0xffd700, rate: 0.82, size: 0.38 },
-            donut: { color: 0xff69b4, rate: 0.88, size: 0.42, ring: true },
-            neon: { colors: [0x66ccff, 0xaa66ff, 0xff66cc], rate: 0.95, size: 0.4 },
-            rainbow: { rainbow: true, rate: 0.9, size: 0.38 }
+            spark: { color: 0xffd700, rate: 0.65, size: 0.38 },
+            donut: { color: 0xff69b4, rate: 0.68, size: 0.42 },
+            neon: { colors: [0x66ccff, 0xaa66ff, 0xff66cc], rate: 0.72, size: 0.4 },
+            rainbow: { rainbow: true, rate: 0.68, size: 0.38 }
         };
         const TRAIL_LIFE = 2.4;
         const TRAIL_DECAY = 0.014;
+        const MAX_TRAIL_PARTICLES = 36;
+        const MAX_TRAIL_SPAWN_PER_FRAME = 2;
+        let trailSharedGeo = null;
+        const trailMeshPool = [];
 
         function applyProfile(profile) {
             if (!profile) return;
@@ -741,6 +873,9 @@
         const keys = { a: false, d: false, ArrowLeft: false, ArrowRight: false, ' ': false };
         let touchSteer = 0;
         let mobileSteer = 0;
+        let mobileSteerLeft = false;
+        let mobileSteerRight = false;
+        let mobileMenuPanel = 'shop';
         let jumpQueued = false;
         let airJumpsRemaining = 0;
         let magnetActive = false;
@@ -1331,7 +1466,7 @@
 
             loadLeaderboard();
             leaderboardTimer = setInterval(loadLeaderboard, 30000);
-            updateMainMenuPanels();
+            updateUILayout();
         }
 
         init();
@@ -1347,9 +1482,9 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.shadowMap.type = THREE.PCFShadowMap;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.15;
             renderer.domElement.id = 'gameCanvas';
@@ -1366,8 +1501,8 @@
             dirLight.shadow.camera.bottom = -35;
             dirLight.shadow.camera.left = -50;
             dirLight.shadow.camera.right = 50;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
             scene.add(dirLight);
 
             const lavaGlowLeft = new THREE.PointLight(0xff4400, 1.4, 90);
@@ -1414,7 +1549,10 @@
             window.addEventListener('mouseup', handleMouseUp);
 
             setupSocial();
+            setupMobileMenuNav();
             setupMobileControls();
+            initTrailPool();
+            updateUILayout();
             requestAnimationFrame(animate);
         }
 
@@ -1423,45 +1561,95 @@
             return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
         }
 
+        function isMobileLayout() {
+            return window.matchMedia('(max-width: 900px)').matches
+                || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+        }
+
+        function syncMobileSteer() {
+            if (mobileSteerLeft && !mobileSteerRight) mobileSteer = -1;
+            else if (mobileSteerRight && !mobileSteerLeft) mobileSteer = 1;
+            else mobileSteer = 0;
+        }
+
+        function updateUILayout() {
+            const onMainMenu = !isPlaying && !isGameOver;
+            const playing = isPlaying && !isGameOver;
+
+            document.body.classList.toggle('game-menu', onMainMenu);
+            document.body.classList.toggle('game-playing', playing);
+            document.body.classList.toggle('game-over', isGameOver);
+            document.body.classList.toggle('panel-leaderboard', onMainMenu && mobileMenuPanel === 'leaderboard');
+            document.body.classList.toggle('panel-chat', onMainMenu && mobileMenuPanel === 'chat');
+            document.body.classList.toggle('panel-shop', onMainMenu && mobileMenuPanel === 'shop');
+
+            const shop = document.getElementById('shopPanel');
+            if (shop && !isMobileLayout()) {
+                shop.style.display = onMainMenu ? 'flex' : 'none';
+            } else if (shop) {
+                shop.style.display = '';
+            }
+        }
+
+        function setupMobileMenuNav() {
+            const nav = document.getElementById('mobileMenuNav');
+            if (!nav) return;
+
+            const setPanel = (panel) => {
+                mobileMenuPanel = panel;
+                nav.querySelectorAll('.menu-nav-btn').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.panel === panel);
+                });
+                updateUILayout();
+            };
+
+            nav.querySelectorAll('.menu-nav-btn').forEach((btn) => {
+                btn.addEventListener('click', () => setPanel(btn.dataset.panel || 'shop'));
+            });
+
+            setPanel(mobileMenuPanel);
+        }
+
         function setupMobileControls() {
             const leftBtn = document.getElementById('steerLeft');
             const rightBtn = document.getElementById('steerRight');
             const jumpBtn = document.getElementById('jumpBtn');
 
-            const bindHold = (btn, direction) => {
+            const bindHold = (btn, side) => {
                 const start = (e) => {
                     e.preventDefault();
-                    mobileSteer = direction;
+                    e.stopPropagation();
+                    if (side === 'left') mobileSteerLeft = true;
+                    else mobileSteerRight = true;
+                    syncMobileSteer();
                     btn.classList.add('active');
                 };
                 const end = (e) => {
-                    e.preventDefault();
-                    mobileSteer = 0;
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    if (side === 'left') mobileSteerLeft = false;
+                    else mobileSteerRight = false;
+                    syncMobileSteer();
                     btn.classList.remove('active');
                 };
-                btn.addEventListener('touchstart', start, { passive: false });
-                btn.addEventListener('touchend', end);
-                btn.addEventListener('touchcancel', end);
-                btn.addEventListener('mousedown', start);
-                btn.addEventListener('mouseup', end);
-                btn.addEventListener('mouseleave', end);
+                btn.addEventListener('pointerdown', start);
+                btn.addEventListener('pointerup', end);
+                btn.addEventListener('pointercancel', end);
+                btn.addEventListener('pointerleave', end);
+                btn.addEventListener('contextmenu', (e) => e.preventDefault());
             };
 
-            bindHold(leftBtn, -1);
-            bindHold(rightBtn, 1);
+            bindHold(leftBtn, 'left');
+            bindHold(rightBtn, 'right');
 
             const doJump = (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 if (isPlaying && !isGameOver) tryJump();
             };
-            jumpBtn.addEventListener('touchstart', doJump, { passive: false });
-            jumpBtn.addEventListener('click', doJump);
-        }
-
-        function updateMainMenuPanels() {
-            const onMainMenu = !isPlaying && !isGameOver;
-            const shop = document.getElementById('shopPanel');
-            if (shop) shop.style.display = onMainMenu ? 'flex' : 'none';
+            jumpBtn.addEventListener('pointerdown', doJump);
         }
 
         function startGame() {
@@ -1472,6 +1660,10 @@
             clearTrailParticles();
             isPlaying = true;
             isGameOver = false;
+            mobileSteerLeft = false;
+            mobileSteerRight = false;
+            mobileSteer = 0;
+            touchSteer = 0;
             if (username) loadProfile();
             renderer.domElement.focus();
             document.getElementById('startScreen').style.display = 'none';
@@ -1483,7 +1675,7 @@
             magnetUntil = 0;
             seedInitialObstacles();
             updateHUD();
-            updateMainMenuPanels();
+            updateUILayout();
         }
 
         function onKeyDown(e) {
@@ -1596,7 +1788,8 @@
                     child.material = child.material.clone();
                     styleGhostMaterial(child.material, tint);
                 }
-                child.castShadow = true;
+                child.castShadow = false;
+                child.receiveShadow = false;
             });
         }
 
@@ -1630,7 +1823,7 @@
                         roughness: 0.6
                     })
                 );
-                model.castShadow = true;
+                model.castShadow = false;
                 root.add(model);
             }
             ghostGroup.add(root);
@@ -2244,7 +2437,47 @@
             return COSMETICS_CATALOG[trailId]?.trail || 'none';
         }
 
+        function getTrailSharedGeo() {
+            if (!trailSharedGeo) trailSharedGeo = new THREE.SphereGeometry(0.35, 6, 6);
+            return trailSharedGeo;
+        }
+
+        function initTrailPool() {
+            const geo = getTrailSharedGeo();
+            for (let i = 0; i < MAX_TRAIL_PARTICLES; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.88,
+                    depthWrite: false
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.frustumCulled = false;
+                mesh.visible = false;
+                trailMeshPool.push(mesh);
+            }
+        }
+
+        function acquireTrailMesh(color) {
+            const mesh = trailMeshPool.pop();
+            if (!mesh) return null;
+            mesh.material.color.setHex(color);
+            mesh.material.opacity = 0.88;
+            mesh.scale.setScalar(1);
+            mesh.visible = true;
+            return mesh;
+        }
+
+        function releaseTrailMesh(mesh) {
+            if (mesh.parent) mesh.parent.remove(mesh);
+            else scene.remove(mesh);
+            mesh.visible = false;
+            if (trailMeshPool.length < MAX_TRAIL_PARTICLES) trailMeshPool.push(mesh);
+        }
+
         function spawnTrailParticle(kind, opts = {}) {
+            if (trailParticles.length >= MAX_TRAIL_PARTICLES) return;
+
             const def = TRAIL_DEFS[kind];
             if (!def) return;
 
@@ -2255,19 +2488,8 @@
                 color = def.colors[Math.floor(Math.random() * def.colors.length)];
             }
 
-            let geo;
-            if (def.ring) {
-                geo = new THREE.TorusGeometry(def.size * 0.55, def.size * 0.22, 6, 10);
-            } else {
-                geo = new THREE.SphereGeometry(def.size, 8, 8);
-            }
-            const mat = new THREE.MeshBasicMaterial({
-                color,
-                transparent: true,
-                opacity: 0.92,
-                depthWrite: false
-            });
-            const mesh = new THREE.Mesh(geo, mat);
+            const mesh = acquireTrailMesh(color);
+            if (!mesh) return;
 
             const worldPos = opts.worldPos;
             if (worldPos) {
@@ -2294,10 +2516,12 @@
             if (kind !== 'none' && isPlaying && !isGameOver && playerTrailGroup) {
                 const def = TRAIL_DEFS[kind];
                 if (def) {
-                    trailSpawnAcc += dt * def.rate;
-                    while (trailSpawnAcc >= 1) {
+                    trailSpawnAcc += Math.min(dt, 2) * def.rate;
+                    let spawns = 0;
+                    while (trailSpawnAcc >= 1 && spawns < MAX_TRAIL_SPAWN_PER_FRAME) {
                         trailSpawnAcc -= 1;
                         spawnTrailParticle(kind, { parent: playerTrailGroup });
+                        spawns++;
                     }
                 }
             }
@@ -2319,22 +2543,14 @@
                     p.mesh.position.z += gameSpeed * dt * 1.05;
                 }
                 if (p.life <= 0) {
-                    if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
-                    else scene.remove(p.mesh);
-                    p.mesh.geometry.dispose();
-                    p.mesh.material.dispose();
+                    releaseTrailMesh(p.mesh);
                     trailParticles.splice(i, 1);
                 }
             }
         }
 
         function clearTrailParticles() {
-            trailParticles.forEach((p) => {
-                if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
-                else scene.remove(p.mesh);
-                p.mesh.geometry.dispose();
-                p.mesh.material.dispose();
-            });
+            trailParticles.forEach((p) => releaseTrailMesh(p.mesh));
             trailParticles = [];
             trailSpawnAcc = 0;
         }
@@ -2343,31 +2559,36 @@
             if (kind === 'none') return acc;
             const def = TRAIL_DEFS[kind];
             if (!def) return acc;
-            let next = acc + dt * def.rate;
-            while (next >= 1) {
+            let next = acc + Math.min(dt, 2) * def.rate;
+            let spawns = 0;
+            while (next >= 1 && spawns < MAX_TRAIL_SPAWN_PER_FRAME) {
                 next -= 1;
                 spawnTrailParticle(kind, { worldPos: position });
+                spawns++;
             }
             return next;
         }
 
         function handleTouchStart(e) {
             if (!isPlaying || isGameOver) return;
-            if (e.target.closest('.menu-panel, #startScreen, #gameOver, #mobileControls')) return;
+            if (e.target.closest('.menu-panel, #startScreen, #gameOver, #mobileControls, #mobileMenuNav, input, button, form')) return;
             e.preventDefault();
             const now = performance.now();
-            if (now - lastTouchTime < 280) tryJump();
+            if (now - lastTouchTime < 320) tryJump();
             lastTouchTime = now;
-            updateTouchSteer(e);
+            if (!isMobileLayout()) updateTouchSteer(e);
         }
 
         function handleTouchMove(e) {
-            if (!isPlaying || isGameOver) return;
+            if (!isPlaying || isGameOver || isMobileLayout()) return;
             e.preventDefault();
             updateTouchSteer(e);
         }
 
-        function handleTouchEnd() { touchSteer = 0; }
+        function handleTouchEnd(e) {
+            if (e?.target?.closest('#mobileControls')) return;
+            touchSteer = 0;
+        }
 
         function handleMouseDown(e) {
             if (!isPlaying || isGameOver) return;
@@ -2694,13 +2915,17 @@
         function gameOver() {
             isGameOver = true;
             isPlaying = false;
+            mobileSteerLeft = false;
+            mobileSteerRight = false;
+            mobileSteer = 0;
+            touchSteer = 0;
             SoundEngine.stopMusic();
             LiveClient.sendEnd();
             document.getElementById('gameOver').style.display = 'block';
             document.getElementById('finalScore').innerText =
                 `Final Score: ${Math.floor(score)} · +${donutsCollected} 🍩`;
             submitScore();
-            updateMainMenuPanels();
+            updateUILayout();
         }
 
         function resetGame() {
@@ -2732,13 +2957,15 @@
             isGameOver = false;
             touchSteer = 0;
             mobileSteer = 0;
+            mobileSteerLeft = false;
+            mobileSteerRight = false;
 
             updateHUD();
             document.getElementById('gameOver').style.display = 'none';
             document.getElementById('startScreen').style.display = 'block';
             document.getElementById('instructions').classList.remove('hidden');
             isPlaying = false;
-            updateMainMenuPanels();
+            updateUILayout();
             if (username) loadProfile();
         }
 
@@ -2746,6 +2973,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            updateUILayout();
         }
 
         let lastTime = performance.now();
@@ -2754,7 +2982,7 @@
             requestAnimationFrame(animate);
             if (typeof now !== 'number') return;
 
-            const dt = Math.min((now - lastTime) / 16.67, 5);
+            const dt = Math.min((now - lastTime) / 16.67, 2);
             if (dt <= 0) return;
             lastTime = now;
 
