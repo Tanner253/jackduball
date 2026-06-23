@@ -23,7 +23,7 @@
             </ul>
             <p class="roadmap-note">P2E payouts are <strong>coming soon</strong>. Once the $DuBALL token is live, daily winners get paid — no extra steps.</p>
             <div class="roadmap-ca-row">
-                <code id="roadmapCaText">Solana CA — coming soon</code>
+                <code id="roadmapCaText">G1J4Z6RxjU8RcVDHyujn5XGbEDYqepF7UUd1SwKFpump</code>
                 <button type="button" id="roadmapCopyCaBtn" class="btn-ghost">Copy CA</button>
             </div>
             <p id="roadmapCopyStatus" class="roadmap-copy-status" aria-live="polite"></p>
@@ -165,8 +165,8 @@
         const API_URL = resolveApiBase();
         const LIVE_URL = resolveLiveBase();
 
-        /** Set via window.JACKDUBALL_TOKEN_CA when the Solana mint is live. */
-        const DUBALL_TOKEN_CA = String(window.JACKDUBALL_TOKEN_CA || '').trim();
+        /** Override via window.JACKDUBALL_TOKEN_CA if needed. */
+        const DUBALL_TOKEN_CA = String(window.JACKDUBALL_TOKEN_CA || 'G1J4Z6RxjU8RcVDHyujn5XGbEDYqepF7UUd1SwKFpump').trim();
         const DUBALL_CA_PLACEHOLDER = 'Solana CA — coming soon';
 
         function setupRoadmapPopup() {
