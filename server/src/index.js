@@ -60,13 +60,13 @@ app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
 app.post("/api/leaderboard", writeLimiter, async (req, res, next) => {
   try {
     const { username, score, donuts } = req.body || {};
-    const result = await addScore(username, score);
     let profile = null;
     const banked = Math.max(0, Math.floor(Number(donuts) || 0));
     if (banked > 0 && username) {
       const bank = await bankDonuts(username, banked);
-      if (bank.ok) profile = bank.profile;
+      if (bank.ok && bank.profile) profile = bank.profile;
     }
+    const result = await addScore(username, score);
     const status = result.ok || profile ? 200 : 400;
     res.status(status).json({ ...result, configured: true, profile });
   } catch (e) {

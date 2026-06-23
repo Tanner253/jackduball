@@ -71,7 +71,12 @@ export async function bankDonuts(username, amount) {
     { upsert: true, returnDocument: "after" }
   );
 
-  return { ok: true, banked: donuts, profile: profileView(result) };
+  const doc = result ?? (await db.collection("profiles").findOne({ key }));
+  if (!doc) {
+    return { ok: false, error: "Could not save donuts." };
+  }
+
+  return { ok: true, banked: donuts, profile: profileView(doc) };
 }
 
 export async function buyItem(username, itemId) {

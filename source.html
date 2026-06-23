@@ -3,605 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#08080c">
     <title>Jack DuBall — Rolling Rampage</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #87ceeb;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-        }
-        #gameCanvas,
-        canvas {
-            position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: 100vh;
-            display: block;
-            z-index: 0;
-        }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-            z-index: 10;
-        }
-        #scoreDisplay {
-            font-size: 42px;
-            font-weight: 900;
-            margin: 0;
-            color: #ffd700;
-            -webkit-text-stroke: 1px #000;
-        }
-        #liveStatus {
-            font-size: 12px;
-            color: #7dff9a;
-            margin: 2px 0 0;
-            min-height: 16px;
-            opacity: 0.9;
-        }
-        #donutDisplay {
-            font-size: 18px;
-            color: #ff69b4;
-            margin-top: 4px;
-            font-weight: bold;
-        }
-        #powerupDisplay {
-            font-size: 14px;
-            color: #7dff9a;
-            margin-top: 4px;
-            min-height: 18px;
-            opacity: 0.95;
-        }
-        #multiplierDisplay {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ff5555;
-            margin-top: 5px;
-            opacity: 0;
-            transition: opacity 0.2s, transform 0.1s;
-        }
-        #instructions {
-            font-size: 13px;
-            margin-top: 12px;
-            background: rgba(0,0,0,0.6);
-            padding: 10px 12px;
-            border-radius: 8px;
-            border-left: 4px solid #ffd700;
-            max-width: 260px;
-            line-height: 1.4;
-            transition: opacity 0.5s;
-        }
-        #instructions.hidden,
-        body.game-playing #instructions,
-        body.game-menu #instructions {
-            display: none;
-        }
-        #howToPlay strong,
-        #instructions strong {
-            display: block;
-            color: #ffd700;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-        }
-        #howToPlay {
-            text-align: center;
-            margin: 10px 0 4px;
-            padding: 10px 12px;
-            background: rgba(255,255,255,0.06);
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.12);
-            font-size: 0.82rem;
-            line-height: 1.45;
-            opacity: 0.92;
-        }
-        #startScreen {
-            position: absolute;
-            top: 3%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.82);
-            color: white;
-            padding: 22px 36px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 20;
-            border: 2px solid #fff;
-            max-width: 520px;
-            width: min(92vw, 520px);
-        }
-        #gameOver {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.88);
-            color: white;
-            padding: 40px 50px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 20;
-            border: 2px solid #fff;
-            max-width: 90vw;
-        }
-        #startScreen h1 {
-            margin: 0 0 6px 0;
-            color: #ffd700;
-            font-size: 1.9rem;
-        }
-        #startScreen p { margin: 6px 0; opacity: 0.9; line-height: 1.5; font-size: 0.95rem; }
-        #startScreen button { margin-top: 14px; }
-        #gameOver { display: none; }
-        #gameOver h1 { margin: 0 0 10px 0; color: #ff5555; }
-        body.game-playing #startScreen {
-            display: none !important;
-        }
-        body.game-over #gameOver {
-            display: block !important;
-        }
-        body.game-over #startScreen {
-            display: none !important;
-        }
-        button {
-            padding: 12px 28px;
-            font-size: 18px;
-            cursor: pointer;
-            background: linear-gradient(180deg, #ffd700 0%, #ffaa00 100%);
-            border: 2px solid #fff;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-top: 20px;
-            color: #333;
-            text-transform: uppercase;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            pointer-events: auto;
-        }
-        button:hover {
-            background: linear-gradient(180deg, #ffea00 0%, #ffcc00 100%);
-            transform: translateY(-2px);
-        }
-        button:active { transform: translateY(2px); }
-        #loadingMsg {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            color: white;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-        .menu-panel {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.82);
-            color: white;
-            border: 2px solid rgba(255, 255, 255, 0.85);
-            border-radius: 12px;
-            z-index: 20;
-            pointer-events: auto;
-        }
-        .menu-panel h2 {
-            margin: 0 0 10px 0;
-            font-size: 1rem;
-            color: #ffd700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        #leaderboardPanel {
-            top: 3%;
-            right: 20px;
-            width: min(260px, 30vw);
-            max-height: 55vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            padding: 16px;
-        }
-        #leaderboardList {
-            margin: 0;
-            padding-left: 20px;
-            overflow-y: auto;
-            font-size: 13px;
-            line-height: 1.55;
-        }
-        #leaderboardList li { margin-bottom: 4px; }
-        #leaderboardList .lb-name { color: #fff; }
-        #leaderboardList .lb-score { color: #ffd700; font-weight: bold; }
-        #leaderboardEmpty { font-size: 13px; opacity: 0.75; margin: 0; }
-        #chatPanel {
-            bottom: 20px;
-            right: 20px;
-            width: min(320px, 92vw);
-            height: 240px;
-            display: flex;
-            flex-direction: column;
-            padding: 14px;
-        }
-        #chatMessages {
-            flex: 1;
-            overflow-y: auto;
-            font-size: 13px;
-            line-height: 1.45;
-            margin-bottom: 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            padding: 8px;
-        }
-        #chatMessages .chat-line { margin-bottom: 6px; word-break: break-word; }
-        #chatMessages .chat-user { color: #ffd700; font-weight: bold; }
-        #chatForm {
-            display: flex;
-            gap: 8px;
-        }
-        #chatForm input, #usernameRow input {
-            flex: 1;
-            padding: 8px 10px;
-            border-radius: 6px;
-            border: 1px solid #666;
-            background: rgba(255,255,255,0.95);
-            color: #222;
-            font-size: 16px;
-        }
-        #chatForm button, #usernameRow button {
-            margin-top: 0;
-            padding: 8px 14px;
-            font-size: 14px;
-        }
-        #usernameRow {
-            display: flex;
-            gap: 8px;
-            margin: 12px 0 4px;
-            pointer-events: auto;
-        }
-        #usernameStatus {
-            font-size: 12px;
-            opacity: 0.85;
-            margin: 4px 0 0;
-        }
-        .panel-note {
-            font-size: 11px;
-            opacity: 0.65;
-            margin: 8px 0 0;
-        }
-        #shopPanel {
-            bottom: 20px;
-            left: 20px;
-            width: min(300px, 92vw);
-            max-height: 42vh;
-            display: flex;
-            flex-direction: column;
-            padding: 14px;
-        }
-        #shopBalance {
-            font-size: 15px;
-            color: #ff69b4;
-            font-weight: bold;
-            margin: 0 0 4px;
-        }
-        #shopHint {
-            font-size: 11px;
-            opacity: 0.7;
-            margin: 0 0 10px;
-        }
-        .shop-tabs {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
-        .shop-tab {
-            flex: 1;
-            margin: 0;
-            padding: 6px 8px;
-            font-size: 12px;
-            background: rgba(255,255,255,0.12);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.35);
-        }
-        .shop-tab.active {
-            background: rgba(255, 215, 0, 0.35);
-            color: #ffd700;
-        }
-        .shop-list {
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding-right: 2px;
-        }
-        .shop-item {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 8px;
-            padding: 8px 10px;
-        }
-        .shop-item.equipped {
-            border-color: #ffd700;
-            box-shadow: 0 0 0 1px rgba(255,215,0,0.35);
-        }
-        .shop-item-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
-        .shop-cost { font-size: 12px; color: #ff69b4; white-space: nowrap; }
-        .shop-item-actions { display: flex; justify-content: flex-end; }
-        .shop-btn {
-            margin: 0;
-            padding: 5px 12px;
-            font-size: 12px;
-        }
-        .shop-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-        .shop-equipped, .shop-muted { font-size: 11px; opacity: 0.75; }
-        .tag-preview { font-weight: bold; }
-        .tag-rainbow {
-            background: linear-gradient(90deg, #ff5555, #ffd700, #7dff9a, #66ccff, #ff69b4, #ff5555);
-            background-size: 200% auto;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: rainbowTag 2.5s linear infinite;
-        }
-        @keyframes rainbowTag {
-            to { background-position: 200% center; }
-        }
-        .chat-user.tag-rainbow {
-            -webkit-text-fill-color: transparent;
-        }
-        #mobileControls {
-            display: none;
-            position: fixed;
-            bottom: max(12px, env(safe-area-inset-bottom));
-            left: 0;
-            right: 0;
-            padding: 0 16px;
-            gap: 12px;
-            z-index: 25;
-            pointer-events: auto;
-            touch-action: manipulation;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-        #mobileControls button {
-            width: 76px;
-            height: 76px;
-            margin: 0;
-            padding: 0;
-            border-radius: 50%;
-            font-size: 26px;
-            line-height: 1;
-            background: rgba(0, 0, 0, 0.62);
-            color: #ffd700;
-            border: 2px solid rgba(255, 255, 255, 0.85);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        #mobileControls button.active {
-            background: rgba(255, 215, 0, 0.4);
-            transform: scale(0.94);
-        }
-        #jumpBtn {
-            width: 88px;
-            height: 88px;
-            font-size: 18px;
-            font-weight: 900;
-            letter-spacing: 0.02em;
-        }
-        #mobileMenuNav {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 30;
-            padding: 6px 8px max(8px, env(safe-area-inset-bottom));
-            gap: 6px;
-            background: rgba(0, 0, 0, 0.92);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            pointer-events: auto;
-            touch-action: manipulation;
-        }
-        #mobileMenuNav .menu-nav-btn {
-            flex: 1;
-            margin: 0;
-            padding: 10px 4px;
-            font-size: 12px;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 8px;
-            text-transform: none;
-            box-shadow: none;
-        }
-        #mobileMenuNav .menu-nav-btn.active {
-            background: rgba(255, 215, 0, 0.35);
-            color: #ffd700;
-            border-color: #ffd700;
-        }
-        #mobileTouchHint { display: none !important; }
-        @media (max-width: 900px) {
-            body { padding: 0; }
-            #instructions,
-            #loadingMsg {
-                display: none !important;
-            }
-
-            #startScreen {
-                position: fixed;
-                top: env(safe-area-inset-top, 0);
-                left: 0;
-                right: 0;
-                bottom: calc(54px + env(safe-area-inset-bottom, 0));
-                transform: none;
-                width: auto;
-                max-width: none;
-                border-radius: 0;
-            }
-
-            .menu-panel {
-                display: none !important;
-            }
-
-            body.game-menu #mobileMenuNav {
-                display: flex;
-            }
-
-            body.game-menu:not(.panel-leaderboard):not(.panel-chat):not(.panel-shop) #startScreen {
-                display: block;
-                position: fixed;
-                top: env(safe-area-inset-top, 0);
-                left: 0;
-                right: 0;
-                bottom: calc(54px + env(safe-area-inset-bottom, 0));
-                transform: none;
-                width: auto;
-                max-width: none;
-                margin: 0;
-                padding: 14px 16px 20px;
-                border-radius: 0;
-                border: none;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                z-index: 20;
-            }
-
-            body.game-menu.panel-leaderboard #startScreen,
-            body.game-menu.panel-chat #startScreen,
-            body.game-menu.panel-shop #startScreen {
-                display: none !important;
-            }
-
-            body.game-menu #startScreen h1 { font-size: 1.55rem; }
-            body.game-menu .menu-tagline { font-size: 0.85rem; margin: 4px 0 8px; }
-            body.game-menu #howToPlay { font-size: 0.78rem; padding: 8px 10px; margin: 8px 0; }
-            body.game-menu #startBtn {
-                width: 100%;
-                margin-top: 12px;
-                padding: 14px;
-                font-size: 19px;
-            }
-            body.game-menu #usernameRow { flex-direction: column; gap: 6px; margin-top: 8px; }
-            body.game-menu #usernameRow button { width: 100%; }
-
-            body.game-menu.panel-leaderboard #leaderboardPanel,
-            body.game-menu.panel-chat #chatPanel,
-            body.game-menu.panel-shop #shopPanel {
-                display: flex !important;
-                position: fixed;
-                top: env(safe-area-inset-top, 0);
-                left: 0;
-                right: 0;
-                bottom: calc(54px + env(safe-area-inset-bottom, 0));
-                width: auto;
-                max-height: none;
-                height: auto;
-                margin: 0;
-                padding: 14px;
-                border-radius: 0;
-                border: none;
-                border-top: 2px solid rgba(255, 255, 255, 0.12);
-                z-index: 20;
-                overflow: hidden;
-            }
-
-            body.game-menu #chatPanel {
-                height: auto;
-            }
-
-            body.game-playing #startScreen,
-            body.game-playing #mobileMenuNav,
-            body.game-playing .menu-panel,
-            body.game-playing #gameOver {
-                display: none !important;
-            }
-
-            body.game-playing #mobileControls {
-                display: flex;
-                z-index: 50;
-                bottom: max(14px, env(safe-area-inset-bottom));
-                padding: 0 10px;
-                gap: 8px;
-            }
-
-            body.game-playing #mobileControls button {
-                width: 82px;
-                height: 82px;
-                font-size: 24px;
-            }
-
-            body.game-playing #jumpBtn {
-                width: 94px;
-                height: 94px;
-                font-size: 16px;
-            }
-
-            body.game-playing #ui {
-                position: fixed;
-                top: max(6px, env(safe-area-inset-top));
-                left: 8px;
-                right: auto;
-                z-index: 10;
-                max-width: 50vw;
-            }
-
-            body.game-playing #scoreDisplay { font-size: 26px; line-height: 1; }
-            body.game-playing #liveStatus { font-size: 10px; min-height: 0; margin-top: 0; }
-            body.game-playing #donutDisplay { font-size: 12px; margin-top: 2px; }
-            body.game-playing #powerupDisplay { font-size: 11px; margin-top: 2px; min-height: 14px; }
-            body.game-playing #multiplierDisplay { font-size: 16px; margin-top: 2px; }
-
-            body.game-over #mobileControls,
-            body.game-over #mobileMenuNav {
-                display: none !important;
-            }
-
-            body.game-over #gameOver {
-                display: block !important;
-                position: fixed;
-                z-index: 40;
-                width: calc(100% - 24px);
-                max-width: 360px;
-                padding: 28px 20px;
-            }
-
-            body.game-over .menu-panel,
-            body.game-over #startScreen {
-                display: none !important;
-            }
-        }
-        @media (min-width: 901px) {
-            #mobileMenuNav,
-            #mobileControls {
-                display: none !important;
-            }
-            body.game-menu #shopPanel { display: flex; }
-        }
-    </style>
+    <link rel="stylesheet" href="ui.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
+    <div id="roadmapPopup" role="dialog" aria-labelledby="roadmapTitle" aria-modal="true">
+        <div class="roadmap-card">
+            <p class="roadmap-badge">Priority #1 · Roadmap</p>
+            <h2 id="roadmapTitle">Play to Earn $DuBALL</h2>
+            <ul class="roadmap-list">
+                <li>Same mechanics as BBALL — compete for the top spot on the 24h leaderboard</li>
+                <li>Top 3 players earn $DuBALL every 24 hours, paid automatically</li>
+                <li>Estimated ~24 hours of dev to ship once the token is live</li>
+            </ul>
+            <p class="roadmap-note">P2E is <strong>not live on deploy day</strong>. We need a Solana contract address (CA) and token supply to pay players who are grinding.</p>
+            <div class="roadmap-ca-row">
+                <code id="roadmapCaText">Solana CA — coming soon</code>
+                <button type="button" id="roadmapCopyCaBtn" class="btn-ghost">Copy CA</button>
+            </div>
+            <p id="roadmapCopyStatus" class="roadmap-copy-status" aria-live="polite"></p>
+            <button type="button" id="roadmapDismissBtn">Got it — let me roll</button>
+        </div>
+    </div>
+
     <div id="ui">
-        <p id="scoreDisplay">0</p>
-        <p id="liveStatus"></p>
-        <p id="donutDisplay">Donuts: 0</p>
-        <p id="powerupDisplay"></p>
-        <p id="multiplierDisplay">x1 COMBO!</p>
+        <div class="hud-shell">
+            <p id="scoreDisplay">0</p>
+            <p id="liveStatus"></p>
+            <p id="donutDisplay">Donuts: 0</p>
+            <p id="powerupDisplay"></p>
+            <p id="multiplierDisplay">x1 COMBO!</p>
+        </div>
         <div id="instructions">
             <strong>How to play</strong>
             Steer <b>A/D</b> or <b>◀ ▶</b> · Jump <b>Space</b> or <b>JUMP</b><br>
@@ -612,7 +48,19 @@
 
     <div id="loadingMsg">Loading Jack DuBall...</div>
 
-    <div id="startScreen">
+    <div id="audioPanel" class="audio-panel glass-panel" aria-label="Volume settings">
+        <label class="vol-row">
+            <span>Music</span>
+            <input type="range" id="musicVolume" min="0" max="100" value="65" aria-label="Music volume">
+        </label>
+        <label class="vol-row">
+            <span>SFX</span>
+            <input type="range" id="sfxVolume" min="0" max="100" value="85" aria-label="Sound effects volume">
+        </label>
+    </div>
+
+    <div id="startScreen" class="glass-panel">
+        <div class="brand-mark" aria-hidden="true">🏀</div>
         <h1>Jack DuBall</h1>
         <p class="menu-tagline">Roll, jump, smash — chase the high score.</p>
         <div id="howToPlay">
@@ -623,43 +71,60 @@
         </div>
         <div id="usernameRow">
             <input id="usernameInput" maxlength="20" placeholder="Choose a username" autocomplete="off">
-            <button id="usernameBtn" type="button">Save</button>
+            <button id="usernameBtn" type="button" class="btn-ghost">Save</button>
         </div>
         <p id="usernameStatus">Set a username to unlock chat &amp; the donut shop.</p>
-        <button id="startBtn">Start Rolling</button>
+        <button id="startBtn" class="btn-primary">Start Rolling</button>
     </div>
 
-    <div id="leaderboardPanel" class="menu-panel">
-        <h2>Leaderboard</h2>
+    <div id="leaderboardPanel" class="menu-panel glass-panel">
+        <div class="panel-head"><span class="panel-dot"></span><h2>Leaderboard</h2></div>
         <p id="leaderboardEmpty">Loading scores...</p>
         <ol id="leaderboardList"></ol>
     </div>
 
-    <div id="chatPanel" class="menu-panel">
-        <h2>Chat</h2>
+    <div id="chatPanel" class="menu-panel glass-panel">
+        <div class="panel-head panel-head-actions">
+            <span class="panel-dot"></span>
+            <h2>Live Chat</h2>
+            <button type="button" id="chatCloseBtn" class="panel-icon-btn" aria-label="Close chat">×</button>
+        </div>
         <div id="chatMessages"></div>
         <form id="chatForm">
             <input id="chatInput" maxlength="200" disabled placeholder="Set username to chat">
-            <button type="submit" id="chatSendBtn" disabled>Send</button>
+            <button type="submit" id="chatSendBtn" class="btn-ghost" disabled>Send</button>
         </form>
         <p class="panel-note">Chat works between runs and while playing.</p>
     </div>
 
-    <div id="shopPanel" class="menu-panel">
-        <h2>Donut Shop</h2>
-        <p id="shopBalance">🍩 0 donuts</p>
-        <p id="shopHint">Donuts buy cosmetics only — nametags &amp; trails. Set a username to save them.</p>
-        <div class="shop-tabs">
-            <button type="button" class="shop-tab active" data-tab="tag">Nametags</button>
-            <button type="button" class="shop-tab" data-tab="trail">Trails</button>
+    <button type="button" id="chatBubble" class="chat-bubble" aria-label="Open chat" aria-expanded="false">
+        <span class="chat-bubble-icon" aria-hidden="true">💬</span>
+        <span id="chatBubbleBadge" class="chat-unread-badge" hidden aria-hidden="true">0</span>
+    </button>
+
+    <div id="shopPanel" class="menu-panel glass-panel">
+        <div class="panel-head panel-head-actions">
+            <span class="panel-dot"></span>
+            <h2>Donut Shop</h2>
+            <button type="button" id="shopCollapseBtn" class="panel-icon-btn" aria-label="Collapse shop">−</button>
         </div>
-        <div id="shopList" class="shop-list"></div>
+        <div id="shopPanelBody">
+            <p id="shopBalance">🍩 0 donuts</p>
+            <p id="shopHint">Donuts buy cosmetics only — nametags &amp; trails. Set a username to save them.</p>
+            <div class="shop-tabs">
+                <button type="button" class="shop-tab active" data-tab="tag">Nametags</button>
+                <button type="button" class="shop-tab" data-tab="trail">Trails</button>
+            </div>
+            <div id="shopList" class="shop-list"></div>
+        </div>
     </div>
 
-    <div id="gameOver">
+    <button type="button" id="shopExpandBtn" class="dock-chip shop-dock" aria-label="Open donut shop">🍩 Shop</button>
+
+    <div id="gameOver" class="glass-panel">
         <h1>CRASHED!</h1>
-        <p id="finalScore" style="font-size: 24px;">Score: 0</p>
-        <button onclick="resetGame()">Play Again</button>
+        <p id="finalScore" class="final-score">Score: 0</p>
+        <button class="btn-primary" onclick="resetGame()">Play Again</button>
     </div>
 
     <div id="mobileControls">
@@ -671,7 +136,10 @@
     <nav id="mobileMenuNav" aria-label="Menu sections">
         <button type="button" class="menu-nav-btn active" data-panel="none">Menu</button>
         <button type="button" class="menu-nav-btn" data-panel="leaderboard">Scores</button>
-        <button type="button" class="menu-nav-btn" data-panel="chat">Chat</button>
+        <button type="button" class="menu-nav-btn" data-panel="chat">
+            Chat
+            <span id="chatNavBadge" class="nav-unread-badge" hidden aria-hidden="true">0</span>
+        </button>
         <button type="button" class="menu-nav-btn" data-panel="shop">Shop</button>
     </nav>
 
@@ -695,6 +163,52 @@
 
         const API_URL = resolveApiBase();
         const LIVE_URL = resolveLiveBase();
+
+        /** Set via window.JACKDUBALL_TOKEN_CA when the Solana mint is live. */
+        const DUBALL_TOKEN_CA = String(window.JACKDUBALL_TOKEN_CA || '').trim();
+        const DUBALL_CA_PLACEHOLDER = 'Solana CA — coming soon';
+
+        function setupRoadmapPopup() {
+            const popup = document.getElementById('roadmapPopup');
+            const caText = document.getElementById('roadmapCaText');
+            const copyBtn = document.getElementById('roadmapCopyCaBtn');
+            const status = document.getElementById('roadmapCopyStatus');
+            const dismiss = document.getElementById('roadmapDismissBtn');
+            if (!popup || !caText || !copyBtn || !dismiss) return;
+
+            const hasCa = DUBALL_TOKEN_CA.length > 0;
+            caText.textContent = hasCa ? DUBALL_TOKEN_CA : DUBALL_CA_PLACEHOLDER;
+
+            copyBtn.addEventListener('click', async () => {
+                if (!hasCa) {
+                    status.textContent = 'CA not minted yet — check back after launch!';
+                    return;
+                }
+                try {
+                    await navigator.clipboard.writeText(DUBALL_TOKEN_CA);
+                    status.textContent = 'Contract address copied!';
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy CA'; }, 1800);
+                } catch {
+                    status.textContent = 'Copy blocked — select the address and copy manually.';
+                }
+            });
+
+            const close = () => {
+                popup.classList.remove('open');
+                status.textContent = '';
+            };
+
+            dismiss.addEventListener('click', close);
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup) close();
+            });
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && popup.classList.contains('open')) close();
+            });
+
+            popup.classList.add('open');
+        }
 
         async function apiFetch(path, options = {}, retries = 3) {
             const url = `${API_URL}${path}`;
@@ -798,13 +312,30 @@
         let username = localStorage.getItem('jackduball_username') || '';
         let leaderboardTimer = null;
         let shopTab = 'tag';
-        let playerProfile = {
+
+        const DEFAULT_PROFILE = {
             donuts: 0,
             owned: ['tag-gold', 'trail-none'],
             equipped: { tag: 'tag-gold', trail: 'trail-none' }
         };
 
-        const DEFAULT_PROFILE = {
+        function loadCachedProfile() {
+            try {
+                const raw = localStorage.getItem('jackduball_profile');
+                if (!raw) return null;
+                const cached = JSON.parse(raw);
+                if (!cached || typeof cached !== 'object') return null;
+                return {
+                    donuts: cached.donuts ?? 0,
+                    owned: [...new Set([...(cached.owned ?? DEFAULT_PROFILE.owned)])],
+                    equipped: { ...DEFAULT_PROFILE.equipped, ...(cached.equipped ?? {}) }
+                };
+            } catch {
+                return null;
+            }
+        }
+
+        let playerProfile = loadCachedProfile() ?? {
             donuts: 0,
             owned: ['tag-gold', 'trail-none'],
             equipped: { tag: 'tag-gold', trail: 'trail-none' }
@@ -850,8 +381,12 @@
                     ...(profile.equipped ?? {})
                 }
             };
+            if (username) {
+                localStorage.setItem('jackduball_profile', JSON.stringify(playerProfile));
+            }
             updateShopUI();
             updateUsernameDisplay();
+            updateHUD();
         }
 
         const LiveClient = {
@@ -885,14 +420,14 @@
                         this.myId = m.id;
                     } else if (m.t === 'chat-history' && Array.isArray(m.messages)) {
                         this.chatLog = m.messages.slice(-500);
-                        this.notifyChat();
+                        this.notifyChat('history');
                     } else if (m.t === 'chat' && m.msg) {
                         this.chatLog = [...this.chatLog, m.msg].slice(-500);
                         this.chatError = null;
-                        this.notifyChat();
+                        this.notifyChat('message');
                     } else if (m.t === 'chat-err' && m.error) {
                         this.chatError = m.error;
-                        this.notifyChat();
+                        this.notifyChat('error');
                     } else if (m.t === 'state' && Array.isArray(m.players)) {
                         this.watching = m.watching ?? 0;
                         const seen = new Set();
@@ -927,8 +462,8 @@
                 };
                 this.ws.onerror = () => this.ws?.close();
             },
-            notifyChat() {
-                for (const cb of this.chatListeners) cb();
+            notifyChat(kind = 'update') {
+                for (const cb of this.chatListeners) cb(kind);
             },
             onChat(cb) {
                 this.chatListeners.add(cb);
@@ -998,6 +533,9 @@
         let mobileSteerLeft = false;
         let mobileSteerRight = false;
         let mobileMenuPanel = 'none';
+        let shopCollapsed = false;
+        let chatOpen = false;
+        let chatUnreadCount = 0;
         let jumpQueued = false;
         let airJumpsRemaining = 0;
         let magnetActive = false;
@@ -1006,12 +544,43 @@
         const SoundEngine = {
             ctx: null,
             musicGain: null,
+            sfxGain: null,
             musicFilter: null,
             musicPlaying: false,
             musicTimer: null,
             musicStep: 0,
             musicStepDuration: 0,
             musicLoopSteps: 32,
+            musicVolume: 0.65,
+            sfxVolume: 0.85,
+            MUSIC_GAIN_MAX: 0.42,
+            SFX_GAIN_MAX: 1,
+            loadVolumeSettings() {
+                const music = Number(localStorage.getItem('jackduball_music_vol'));
+                const sfx = Number(localStorage.getItem('jackduball_sfx_vol'));
+                if (!Number.isNaN(music)) this.musicVolume = Math.min(1, Math.max(0, music / 100));
+                if (!Number.isNaN(sfx)) this.sfxVolume = Math.min(1, Math.max(0, sfx / 100));
+            },
+            applyVolumes() {
+                this.ensure();
+                this.initMusicBus();
+                if (this.musicGain) {
+                    this.musicGain.gain.value = this.musicVolume * this.MUSIC_GAIN_MAX;
+                }
+                if (this.sfxGain) {
+                    this.sfxGain.gain.value = this.sfxVolume * this.SFX_GAIN_MAX;
+                }
+            },
+            setMusicVolume(pct) {
+                this.musicVolume = Math.min(1, Math.max(0, pct / 100));
+                localStorage.setItem('jackduball_music_vol', String(Math.round(this.musicVolume * 100)));
+                this.applyVolumes();
+            },
+            setSfxVolume(pct) {
+                this.sfxVolume = Math.min(1, Math.max(0, pct / 100));
+                localStorage.setItem('jackduball_sfx_vol', String(Math.round(this.sfxVolume * 100)));
+                this.applyVolumes();
+            },
             ensure() {
                 if (!this.ctx) {
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1022,11 +591,13 @@
                 if (this.musicGain) return;
                 this.musicFilter = this.ctx.createBiquadFilter();
                 this.musicFilter.type = 'lowpass';
-                this.musicFilter.frequency.value = 2800;
+                this.musicFilter.frequency.value = 4200;
                 this.musicGain = this.ctx.createGain();
-                this.musicGain.gain.value = 0.11;
+                this.sfxGain = this.ctx.createGain();
                 this.musicFilter.connect(this.musicGain);
                 this.musicGain.connect(this.ctx.destination);
+                this.sfxGain.connect(this.ctx.destination);
+                this.applyVolumes();
             },
             playNote(freq, duration, type, gain, time, dest, slide = 0) {
                 const osc = this.ctx.createOscillator();
@@ -1039,7 +610,7 @@
                 amp.gain.setValueAtTime(gain, time);
                 amp.gain.exponentialRampToValueAtTime(0.001, time + duration);
                 osc.connect(amp);
-                amp.connect(dest || this.ctx.destination);
+                amp.connect(dest || this.sfxGain || this.ctx.destination);
                 osc.start(time);
                 osc.stop(time + duration + 0.03);
             },
@@ -1049,7 +620,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(160, time);
                 osc.frequency.exponentialRampToValueAtTime(42, time + 0.09);
-                amp.gain.setValueAtTime(0.09, time);
+                amp.gain.setValueAtTime(0.11, time);
                 amp.gain.exponentialRampToValueAtTime(0.001, time + 0.11);
                 osc.connect(amp);
                 amp.connect(this.musicGain);
@@ -1066,7 +637,7 @@
                 const noise = this.ctx.createBufferSource();
                 noise.buffer = buffer;
                 const amp = this.ctx.createGain();
-                amp.gain.setValueAtTime(0.04, time);
+                amp.gain.setValueAtTime(0.055, time);
                 amp.gain.exponentialRampToValueAtTime(0.001, time + 0.07);
                 noise.connect(amp);
                 amp.connect(this.musicGain);
@@ -1083,7 +654,7 @@
                 const noise = this.ctx.createBufferSource();
                 noise.buffer = buffer;
                 const amp = this.ctx.createGain();
-                amp.gain.setValueAtTime(0.012, time);
+                amp.gain.setValueAtTime(0.018, time);
                 amp.gain.exponentialRampToValueAtTime(0.001, time + 0.025);
                 noise.connect(amp);
                 amp.connect(this.musicGain);
@@ -1096,24 +667,33 @@
                 const bass = [
                     82.4, 0, 98, 0, 123.5, 0, 98, 0,
                     82.4, 0, 110, 0, 146.8, 0, 123.5, 0,
-                    82.4, 0, 98, 0, 123.5, 0, 146.8, 0,
-                    110, 0, 123.5, 0, 98, 0, 82.4, 0
+                    73.4, 0, 87.3, 0, 110, 0, 130.8, 0,
+                    98, 0, 123.5, 0, 146.8, 0, 110, 0
                 ];
                 const lead = [
-                    0, 0, 329.6, 0, 392, 493.9, 0, 392,
-                    0, 329.6, 0, 0, 440, 0, 392, 0,
-                    0, 0, 493.9, 0, 587.3, 659.3, 0, 587.3,
-                    0, 493.9, 0, 440, 392, 0, 329.6, 0
+                    0, 329.6, 392, 493.9, 0, 392, 329.6, 0,
+                    440, 0, 493.9, 587.3, 0, 523.3, 493.9, 0,
+                    0, 349.2, 440, 523.3, 0, 440, 392, 0,
+                    493.9, 0, 587.3, 659.3, 0, 587.3, 493.9, 392
+                ];
+                const pad = [
+                    0, 0, 0, 0, 164.8, 0, 0, 0,
+                    0, 0, 0, 0, 174.6, 0, 0, 0,
+                    0, 0, 0, 0, 146.8, 0, 0, 0,
+                    0, 0, 0, 0, 196, 0, 0, 0
                 ];
                 const hats = [2, 6, 10, 14, 18, 22, 26, 30];
-                const kicks = [0, 8, 16, 24];
+                const kicks = [0, 4, 8, 12, 16, 20, 24, 28];
                 const snares = [8, 24];
 
                 if (bass[step]) {
-                    this.playNote(bass[step], 0.2, 'sawtooth', 0.028, t, dest);
+                    this.playNote(bass[step], 0.22, 'sawtooth', 0.032, t, dest);
+                }
+                if (pad[step]) {
+                    this.playNote(pad[step], 0.35, 'triangle', 0.012, t, dest);
                 }
                 if (lead[step]) {
-                    this.playNote(lead[step], 0.1, 'square', 0.016, t, dest);
+                    this.playNote(lead[step], 0.11, 'square', 0.018, t, dest);
                 }
                 if (kicks.includes(step)) this.playKick(t);
                 if (snares.includes(step)) this.playSnare(t);
@@ -1134,7 +714,7 @@
                 if (this.musicPlaying) return;
                 this.musicPlaying = true;
                 this.musicStep = 0;
-                const bpm = 126;
+                const bpm = 118;
                 this.musicStepDuration = (60 / bpm) / 2;
                 this.scheduleMusicTick();
             },
@@ -1145,9 +725,34 @@
                     this.musicTimer = null;
                 }
             },
-            tone(freq, duration, type = 'square', gain = 0.05, slide = 0) {
+            tone(freq, duration, type = 'square', gain = 0.05, slide = 0, delayMs = 0) {
                 this.ensure();
-                this.playNote(freq, duration, type, gain, this.ctx.currentTime, this.ctx.destination, slide);
+                this.initMusicBus();
+                const time = this.ctx.currentTime + delayMs / 1000;
+                this.playNote(freq, duration, type, gain, time, this.sfxGain, slide);
+            },
+            playBuildingSmash() {
+                this.tone(523.25, 0.07, 'sine', 0.08, 0, 0);
+                this.tone(659.25, 0.07, 'sine', 0.07, 0, 55);
+                this.tone(783.99, 0.09, 'triangle', 0.08, 0, 105);
+                this.tone(987.77, 0.14, 'sine', 0.06, 0, 165);
+            },
+            playTreeSmash() {
+                this.tone(140, 0.14, 'sawtooth', 0.045, -60, 0);
+            },
+            playPowerupPickup() {
+                this.tone(440, 0.06, 'sine', 0.07, 0, 0);
+                this.tone(554.37, 0.06, 'sine', 0.07, 0, 55);
+                this.tone(659.25, 0.07, 'triangle', 0.08, 0, 110);
+                this.tone(880, 0.1, 'sine', 0.07, 80, 165);
+                this.tone(1174.66, 0.14, 'triangle', 0.05, 0, 240);
+            },
+            playMagnetPickup() {
+                this.tone(220, 0.12, 'sine', 0.06, 140, 0);
+                this.tone(330, 0.1, 'triangle', 0.05, 0, 40);
+                this.tone(440, 0.08, 'sine', 0.06, 0, 90);
+                this.tone(660, 0.12, 'sine', 0.05, 100, 150);
+                this.tone(880, 0.16, 'triangle', 0.04, 0, 220);
             },
             play(name) {
                 switch (name) {
@@ -1156,35 +761,61 @@
                         break;
                     case 'collect':
                         this.tone(660, 0.08, 'sine', 0.06);
-                        setTimeout(() => this.tone(880, 0.1, 'sine', 0.05), 70);
+                        this.tone(880, 0.1, 'sine', 0.05, 0, 70);
+                        break;
+                    case 'buildingSmash':
+                        this.playBuildingSmash();
+                        break;
+                    case 'treeSmash':
+                        this.playTreeSmash();
                         break;
                     case 'smash':
-                        this.tone(120, 0.16, 'sawtooth', 0.05, -70);
+                        this.playBuildingSmash();
                         break;
                     case 'crash':
                         this.tone(90, 0.35, 'sawtooth', 0.07, -50);
-                        this.tone(55, 0.4, 'square', 0.04, -20);
+                        this.tone(55, 0.4, 'square', 0.04, -20, 30);
                         break;
                     case 'start':
                         this.tone(392, 0.08, 'triangle', 0.04);
-                        setTimeout(() => this.tone(523, 0.12, 'triangle', 0.04), 90);
+                        this.tone(523, 0.12, 'triangle', 0.04, 0, 90);
                         break;
                     case 'combo':
                         this.tone(380 + Math.min(combo, 8) * 45, 0.1, 'sine', 0.05);
                         break;
                     case 'powerup':
-                        this.tone(520, 0.07, 'sine', 0.06);
-                        setTimeout(() => this.tone(780, 0.1, 'triangle', 0.05), 60);
-                        setTimeout(() => this.tone(980, 0.12, 'sine', 0.04), 130);
+                        this.playPowerupPickup();
                         break;
                     case 'magnet':
-                        this.tone(300, 0.14, 'sine', 0.05, 120);
+                        this.playMagnetPickup();
                         break;
                     default:
                         break;
                 }
             }
         };
+
+        SoundEngine.loadVolumeSettings();
+
+        function setupAudioControls() {
+            const musicSlider = document.getElementById('musicVolume');
+            const sfxSlider = document.getElementById('sfxVolume');
+            if (!musicSlider || !sfxSlider) return;
+
+            musicSlider.value = String(Math.round(SoundEngine.musicVolume * 100));
+            sfxSlider.value = String(Math.round(SoundEngine.sfxVolume * 100));
+
+            musicSlider.addEventListener('input', () => {
+                SoundEngine.setMusicVolume(Number(musicSlider.value));
+            });
+            sfxSlider.addEventListener('input', () => {
+                SoundEngine.setSfxVolume(Number(sfxSlider.value));
+                SoundEngine.play('collect');
+            });
+
+            musicSlider.addEventListener('pointerdown', (e) => e.stopPropagation());
+            sfxSlider.addEventListener('pointerdown', (e) => e.stopPropagation());
+        }
 
         function getEquippedTag() {
             return playerProfile.equipped?.tag || 'tag-gold';
@@ -1435,11 +1066,16 @@
                 loadProfile();
             } else {
                 localStorage.removeItem('jackduball_username');
+                localStorage.removeItem('jackduball_profile');
+                playerProfile = {
+                    ...DEFAULT_PROFILE,
+                    owned: [...DEFAULT_PROFILE.owned],
+                    equipped: { ...DEFAULT_PROFILE.equipped }
+                };
                 status.textContent = 'Set a username to unlock chat & donut shop.';
                 chatInput.disabled = true;
                 chatSendBtn.disabled = true;
                 chatInput.placeholder = 'Set username to chat';
-                playerProfile = { ...DEFAULT_PROFILE };
                 updateShopUI();
             }
         }
@@ -1499,9 +1135,10 @@
             }
         }
 
-        async function submitScore() {
-            const finalScore = Math.floor(score);
-            if (finalScore <= 0 && donutsCollected <= 0) return;
+        async function submitScore(runScore, runDonuts) {
+            const finalScore = Math.max(0, Math.floor(Number(runScore) || 0));
+            const donutsToBank = Math.max(0, Math.floor(Number(runDonuts) || 0));
+            if (finalScore <= 0 && donutsToBank <= 0) return;
 
             const input = document.getElementById('usernameInput');
             const name = (username || input.value || '').trim().slice(0, 20);
@@ -1513,7 +1150,7 @@
                 const res = await apiFetch('/api/leaderboard', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: name, score: finalScore, donuts: donutsCollected })
+                    body: JSON.stringify({ username: name, score: finalScore, donuts: donutsToBank })
                 });
                 const data = await res.json();
                 if (data.profile) {
@@ -1535,6 +1172,74 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
+        }
+
+        function isChatVisible() {
+            const mobile = isMobileLayout();
+            if (mobile) {
+                return !isPlaying && !isGameOver && mobileMenuPanel === 'chat';
+            }
+            return chatOpen;
+        }
+
+        function isChatMessageFromSelf(entry) {
+            const user = entry?.username || entry?.name || '';
+            return Boolean(username && user === username);
+        }
+
+        function markChatRead() {
+            chatUnreadCount = 0;
+            updateChatUnreadBadge();
+        }
+
+        function bumpChatUnread(entry) {
+            if (!entry || isChatMessageFromSelf(entry)) return;
+            const user = entry.username || entry.name || '';
+            if (user === 'System') return;
+            chatUnreadCount++;
+            updateChatUnreadBadge();
+        }
+
+        function updateChatUnreadBadge() {
+            const label = chatUnreadCount > 0
+                ? `Open chat (${chatUnreadCount} unread)`
+                : 'Open chat';
+            const countText = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
+
+            const bubble = document.getElementById('chatBubble');
+            const bubbleBadge = document.getElementById('chatBubbleBadge');
+            if (bubble) {
+                bubble.classList.toggle('has-unread', chatUnreadCount > 0);
+                bubble.setAttribute('aria-label', label);
+            }
+            if (bubbleBadge) {
+                bubbleBadge.textContent = countText;
+                bubbleBadge.hidden = chatUnreadCount <= 0;
+            }
+
+            const navBadge = document.getElementById('chatNavBadge');
+            const navChatBtn = document.querySelector('.menu-nav-btn[data-panel="chat"]');
+            if (navBadge) {
+                navBadge.textContent = countText;
+                navBadge.hidden = chatUnreadCount <= 0;
+            }
+            if (navChatBtn) {
+                navChatBtn.classList.toggle('has-unread', chatUnreadCount > 0);
+                navChatBtn.setAttribute('aria-label', chatUnreadCount > 0
+                    ? `Chat (${chatUnreadCount} unread)`
+                    : 'Chat');
+            }
+        }
+
+        function handleChatUpdate(kind) {
+            if (kind === 'message') {
+                const log = LiveClient.getChatLog();
+                const latest = log[log.length - 1];
+                if (!isChatVisible()) bumpChatUnread(latest);
+                else markChatRead();
+            }
+            renderChatLog();
+            updateChatUnreadBadge();
         }
 
         function appendChatMessage(entry) {
@@ -1566,6 +1271,7 @@
         }
 
         function setupSocial() {
+            setupAudioControls();
             const usernameInput = document.getElementById('usernameInput');
             const usernameBtn = document.getElementById('usernameBtn');
             const chatForm = document.getElementById('chatForm');
@@ -1597,9 +1303,7 @@
             });
 
             LiveClient.connect();
-            LiveClient.onChat(() => {
-                renderChatLog();
-            });
+            LiveClient.onChat((kind) => handleChatUpdate(kind));
             setInterval(() => LiveClient.pushLivePos(), 50);
 
             loadLeaderboard();
@@ -1675,7 +1379,6 @@
             document.getElementById('startBtn').addEventListener('click', startGame);
             renderer.domElement.addEventListener('click', () => {
                 renderer.domElement.focus();
-                if (!isPlaying && !isGameOver) startGame();
             });
             window.addEventListener('keydown', onKeyDown);
             window.addEventListener('keyup', onKeyUp);
@@ -1687,8 +1390,10 @@
             window.addEventListener('mouseup', handleMouseUp);
 
             setupSocial();
+            setupRoadmapPopup();
             setupMobileMenuNav();
             setupMobileControls();
+            setupPanelToggles();
             initTrailPool();
             updateUILayout();
             requestAnimationFrame(animate);
@@ -1712,6 +1417,7 @@
         function updateUILayout() {
             const onMainMenu = !isPlaying && !isGameOver;
             const playing = isPlaying && !isGameOver;
+            const mobile = isMobileLayout();
 
             document.body.classList.toggle('game-menu', onMainMenu);
             document.body.classList.toggle('game-playing', playing);
@@ -1719,20 +1425,60 @@
             document.body.classList.toggle('panel-leaderboard', onMainMenu && mobileMenuPanel === 'leaderboard');
             document.body.classList.toggle('panel-chat', onMainMenu && mobileMenuPanel === 'chat');
             document.body.classList.toggle('panel-shop', onMainMenu && mobileMenuPanel === 'shop');
+            document.body.classList.toggle('shop-collapsed', shopCollapsed && !mobile);
+            document.body.classList.toggle('chat-open', chatOpen && !mobile);
 
             const shop = document.getElementById('shopPanel');
-            if (shop && !isMobileLayout()) {
-                shop.style.display = onMainMenu ? 'flex' : 'none';
+            if (shop && !mobile) {
+                shop.style.display = onMainMenu && !shopCollapsed ? 'flex' : 'none';
             } else if (shop) {
                 shop.style.display = '';
             }
 
+            const chatBubble = document.getElementById('chatBubble');
+            if (chatBubble) {
+                chatBubble.setAttribute('aria-expanded', chatOpen ? 'true' : 'false');
+            }
+
             const nav = document.getElementById('mobileMenuNav');
-            if (nav && isMobileLayout()) {
+            if (nav && mobile) {
                 nav.querySelectorAll('.menu-nav-btn').forEach((btn) => {
                     btn.classList.toggle('active', btn.dataset.panel === mobileMenuPanel);
                 });
             }
+        }
+
+        function setupPanelToggles() {
+            const shopCollapseBtn = document.getElementById('shopCollapseBtn');
+            const shopExpandBtn = document.getElementById('shopExpandBtn');
+            const chatBubble = document.getElementById('chatBubble');
+            const chatCloseBtn = document.getElementById('chatCloseBtn');
+
+            shopCollapseBtn?.addEventListener('click', () => {
+                shopCollapsed = true;
+                updateUILayout();
+            });
+
+            shopExpandBtn?.addEventListener('click', () => {
+                shopCollapsed = false;
+                updateUILayout();
+            });
+
+            const openChat = () => {
+                chatOpen = true;
+                markChatRead();
+                updateUILayout();
+                document.getElementById('chatInput')?.focus();
+            };
+
+            const closeChat = () => {
+                chatOpen = false;
+                if (isMobileLayout()) mobileMenuPanel = 'none';
+                updateUILayout();
+            };
+
+            chatBubble?.addEventListener('click', openChat);
+            chatCloseBtn?.addEventListener('click', closeChat);
         }
 
         function setupMobileMenuNav() {
@@ -1741,6 +1487,7 @@
 
             const setPanel = (panel) => {
                 mobileMenuPanel = panel;
+                if (panel === 'chat') markChatRead();
                 nav.querySelectorAll('.menu-nav-btn').forEach((btn) => {
                     btn.classList.toggle('active', btn.dataset.panel === panel);
                 });
@@ -1835,9 +1582,7 @@
 
             if (e.key === ' ' || e.code === 'Space') {
                 e.preventDefault();
-                if (!isPlaying && !isGameOver) {
-                    startGame();
-                } else if (isPlaying && !isGameOver) {
+                if (isPlaying && !isGameOver) {
                     tryJump();
                 }
                 return;
@@ -2723,7 +2468,7 @@
 
         function handleTouchStart(e) {
             if (!isPlaying || isGameOver) return;
-            if (e.target.closest('.menu-panel, #startScreen, #gameOver, #mobileControls, #mobileMenuNav, input, button, form')) return;
+            if (e.target.closest('.menu-panel, #startScreen, #gameOver, #mobileControls, #mobileMenuNav, #chatBubble, #shopExpandBtn, input, button, form')) return;
             e.preventDefault();
             const now = performance.now();
             if (now - lastTouchTime < 320) tryJump();
@@ -2961,11 +2706,11 @@
                             if (obs.userData.obstacleKind === 'tree') {
                                 score += obs.userData.points;
                                 gameSpeed = Math.max(MIN_SPEED, gameSpeed - TREE_SLOW);
-                                SoundEngine.play('smash');
+                                SoundEngine.play('treeSmash');
                             } else {
                                 applyComboReward(obs.userData.points);
                                 gameSpeed += BUILDING_BOOST;
-                                SoundEngine.play('smash');
+                                SoundEngine.play('buildingSmash');
                             }
 
                             updateHUD();
@@ -3073,9 +2818,11 @@
             touchSteer = 0;
             SoundEngine.stopMusic();
             LiveClient.sendEnd();
+            const runScore = Math.floor(score);
+            const runDonuts = donutsCollected;
             document.getElementById('finalScore').innerText =
-                `Final Score: ${Math.floor(score)} · +${donutsCollected} 🍩`;
-            submitScore();
+                `Final Score: ${runScore} · +${runDonuts} 🍩`;
+            submitScore(runScore, runDonuts);
             updateUILayout();
         }
 
@@ -3125,6 +2872,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            if (isMobileLayout()) chatOpen = false;
             updateUILayout();
         }
 
