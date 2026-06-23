@@ -60,6 +60,22 @@ export async function getLeaderboard() {
     .toArray();
 }
 
+const TEST_ACCOUNT_KEYS = ["testrunner", "donuttest99"];
+
+export async function purgeTestAccounts() {
+  const db = await getDb();
+  const lb = await db.collection("leaderboard").deleteMany({ key: { $in: TEST_ACCOUNT_KEYS } });
+  const profiles = await db.collection("profiles").deleteMany({ key: { $in: TEST_ACCOUNT_KEYS } });
+  const leaderboard = await getLeaderboard();
+  return {
+    ok: true,
+    removed: TEST_ACCOUNT_KEYS,
+    leaderboardDeleted: lb.deletedCount,
+    profilesDeleted: profiles.deletedCount,
+    leaderboard,
+  };
+}
+
 export async function addScore(username, score) {
   const cleanName = cleanUsername(username);
   const cleanScore = Math.max(0, Math.floor(Number(score) || 0));

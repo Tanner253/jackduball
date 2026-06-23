@@ -12,7 +12,7 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { addScore, getLeaderboard } from "./lib.js";
+import { addScore, getLeaderboard, purgeTestAccounts } from "./lib.js";
 import { attachLive } from "./live.js";
 import { bankDonuts, buyItem, equipItem, getProfile } from "./profile.js";
 
@@ -88,6 +88,15 @@ app.post("/api/profile/bank", writeLimiter, async (req, res, next) => {
     const result = await bankDonuts(username, donuts);
     const status = result.ok ? 200 : 400;
     res.status(status).json({ ...result, configured: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/api/admin/purge-test-data", writeLimiter, async (_req, res, next) => {
+  try {
+    const result = await purgeTestAccounts();
+    res.json({ ...result, configured: true });
   } catch (e) {
     next(e);
   }
