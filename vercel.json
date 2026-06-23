@@ -6,7 +6,7 @@
       "destination": "https://jackduball.onrender.com/api/:path*"
     },
     {
-      "source": "/((?!api/|ui\\.css|.*\\.(glb|png|jpg|jpeg|ico|svg|css|js|woff2?)).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
