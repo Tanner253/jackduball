@@ -1,18 +1,39 @@
 # Jack DuBall
 
-Roll down the lane as Jack Duval and smash trees and houses — avoid the spikes!
+Roll down the 5-lane course, jump through donut hoops, smash obstacles, and climb the leaderboard.
 
-## Play locally
+## Local dev
 
-Open `index.html` in a browser, or serve the folder with any static server.
+```bash
+npm install
+python -m http.server 8765
+```
+
+Open http://localhost:8765 — API routes need `vercel dev` for leaderboard/chat locally:
+
+```bash
+npx vercel dev
+```
+
+## Leaderboard & chat storage
+
+Scores and chat use a **single JSON document** in [Vercel KV](https://vercel.com/docs/storage/vercel-kv) (Redis).
+
+1. In the Vercel dashboard → your project → **Storage** → Create **KV** database
+2. Connect it to the project (sets `KV_*` env vars automatically)
+3. Redeploy
+
+Without KV, the game still runs; leaderboard/chat APIs return empty data.
 
 ## Deploy
 
 ```bash
-vercel --prod
+npx vercel --prod
 ```
 
 ## Controls
 
-- **A / D** or **← / →** — steer
-- **Tap** left or right side of screen on mobile
+- **A / D** or **← / →** — steer across 5 lanes
+- **Spacebar** — jump through donut hoops
+- **Drag** on main menu — orbit camera around Jack
+- **Scroll** on main menu — zoom camera
