@@ -1,11 +1,11 @@
 /**
  * Live layer — streams in-game position while running so other players see
- * ghost balls on their course. Chat rides the same WebSocket (mirrored to Mongo).
+ * ghost runners on their course. Chat rides the same WebSocket (mirrored to Mongo).
  *
  * Protocol (JSON):
  *   client -> server: { t: "pos", name, x, y, dist, tag?, trail? }
  *                     { t: "end" }
- *                     { t: "chat", name, text }
+ *                     { t: "chat", name, text, tag? }
  *   server -> client: { t: "hello", id }
  *                     { t: "state", players: [{id,name,x,y,dist,tag,trail}], watching }
  *                     { t: "chat-history", messages }
@@ -19,7 +19,7 @@ import { getDb, MAX_CHAT } from "./lib.js";
 import { sanitizeEquipped } from "./cosmetics.js";
 
 const STALE_MS = 5000;
-const BROADCAST_MS = 100;
+const BROADCAST_MS = 50;
 const MAX_MSG_BYTES = 700;
 const CHAT_COOLDOWN_MS = 1500;
 
@@ -43,6 +43,30 @@ export function attachLive(server) {
       nextMsgId = Math.max(nextMsgId, ...rows.map((r) => r.id + 1), 1);
     })
     .catch((e) => console.error("chat history load failed:", e.message));
+
+  function buildStatePayload() {
+    return JSON.stringify({
+      t: "state",
+      players: [...flying.entries()].map(([ws, p]) => ({
+        id: ws.liveId,
+        name: p.name,
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10,
+        dist: Math.round(p.dist * 10) / 10,
+        tag: p.tag || "tag-gold",
+        trail: p.trail || "trail-none",
+      })),
+      watching: wss.clients.size,
+    });
+  }
+
+  function broadcastState() {
+    if (wss.clients.size === 0) return;
+    const payload = buildStatePayload();
+    for (const c of wss.clients) {
+      if (c.readyState === 1) c.send(payload);
+    }
+  }
 
   wss.on("connection", (ws) => {
     ws.liveId = String(nextId++);
@@ -68,13 +92,18 @@ export function attachLive(server) {
           trail: sanitizeEquipped(m.trail, "trail"),
           at: Date.now(),
         });
+        broadcastState();
       } else if (m?.t === "end") {
         flying.delete(ws);
+        broadcastState();
       } else if (m?.t === "chat") {
         handleChat(ws, m);
       }
     });
-    ws.on("close", () => flying.delete(ws));
+    ws.on("close", () => {
+      flying.delete(ws);
+      broadcastState();
+    });
     ws.on("error", () => flying.delete(ws));
   });
 
@@ -124,23 +153,7 @@ export function attachLive(server) {
     for (const [ws, p] of flying) {
       if (now - p.at > STALE_MS || ws.readyState !== 1) flying.delete(ws);
     }
-    if (wss.clients.size === 0) return;
-    const payload = JSON.stringify({
-      t: "state",
-      players: [...flying.entries()].map(([ws, p]) => ({
-        id: ws.liveId,
-        name: p.name,
-        x: Math.round(p.x * 10) / 10,
-        y: Math.round(p.y * 10) / 10,
-        dist: Math.round(p.dist),
-        tag: p.tag || "tag-gold",
-        trail: p.trail || "trail-none",
-      })),
-      watching: wss.clients.size,
-    });
-    for (const c of wss.clients) {
-      if (c.readyState === 1) c.send(payload);
-    }
+    broadcastState();
   }, BROADCAST_MS).unref();
 
   return wss;

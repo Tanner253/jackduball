@@ -469,6 +469,7 @@
 
         let scene, camera, renderer;
         let playerGroup, playerMesh;
+        let playerModelTemplate = null;
         let ghostGroup;
         const ghostMeshes = new Map();
         let terrainGroup;
@@ -605,6 +606,7 @@
             myId: null,
             watching: 0,
             lastSend: 0,
+            sendIntervalMs: 50,
             ghosts: new Map(),
             chatLog: [],
             chatError: null,
@@ -681,7 +683,7 @@
             getChatLog() { return this.chatLog; },
             getChatError() { return this.chatError; },
             updateGhosts(dt) {
-                const k = 1 - Math.exp(-dt * 12);
+                const k = 1 - Math.exp(-dt * 22);
                 const out = [];
                 for (const g of this.ghosts.values()) {
                     g.x += (g.tx - g.x) * k;
@@ -701,13 +703,25 @@
             sendPos(name, x, y, dist, tag, trail) {
                 if (!this.ws || this.ws.readyState !== 1) return;
                 const now = performance.now();
-                if (now - this.lastSend < 90) return;
+                if (now - this.lastSend < this.sendIntervalMs) return;
                 this.lastSend = now;
                 this.ws.send(JSON.stringify({
                     t: 'pos', name, x, y, dist,
                     tag: tag || 'tag-gold',
                     trail: trail || 'trail-none'
                 }));
+            },
+            pushLivePos() {
+                if (!isPlaying || isGameOver) return;
+                const name = (username || document.getElementById('usernameInput')?.value.trim()) || 'Runner';
+                this.sendPos(
+                    name,
+                    playerGroup.position.x,
+                    playerGroup.position.y,
+                    distanceTraveled,
+                    getEquippedTag(),
+                    getEquippedTrail()
+                );
             },
             sendEnd() {
                 if (this.ws?.readyState === 1) this.ws.send(JSON.stringify({ t: 'end' }));
@@ -1313,6 +1327,7 @@
             LiveClient.onChat(() => {
                 renderChatLog();
             });
+            setInterval(() => LiveClient.pushLivePos(), 50);
 
             loadLeaderboard();
             leaderboardTimer = setInterval(loadLeaderboard, 30000);
@@ -1516,6 +1531,7 @@
                     fitPlayerModel(playerMesh);
                     enablePlayerShadows(playerMesh);
                     playerGroup.add(playerMesh);
+                    playerModelTemplate = playerMesh;
                     loadingMsg.style.display = 'none';
                 },
                 (xhr) => {
@@ -1564,6 +1580,85 @@
                     }
                 }
             });
+        }
+
+        function applyGhostMaterial(object, tagId) {
+            const tint = tagColorHex(tagId);
+            object.traverse((child) => {
+                if (!child.isMesh) return;
+                if (Array.isArray(child.material)) {
+                    child.material = child.material.map((mat) => {
+                        const cloned = mat.clone();
+                        styleGhostMaterial(cloned, tint);
+                        return cloned;
+                    });
+                } else if (child.material) {
+                    child.material = child.material.clone();
+                    styleGhostMaterial(child.material, tint);
+                }
+                child.castShadow = true;
+            });
+        }
+
+        function styleGhostMaterial(material, tint) {
+            material.transparent = true;
+            material.opacity = 0.78;
+            material.depthWrite = false;
+            if (material.emissive) {
+                material.emissive.setHex(tint);
+                material.emissiveIntensity = 0.18;
+            }
+        }
+
+        function createGhostRunner(g) {
+            const root = new THREE.Group();
+            let model = null;
+            if (playerModelTemplate) {
+                model = playerModelTemplate.clone(true);
+                applyGhostMaterial(model, g.tag);
+                root.add(model);
+            } else {
+                const tint = tagColorHex(g.tag);
+                model = new THREE.Mesh(
+                    new THREE.SphereGeometry(PLAYER_RADIUS * 0.85, 16, 16),
+                    new THREE.MeshStandardMaterial({
+                        color: tint,
+                        transparent: true,
+                        opacity: 0.55,
+                        emissive: tint,
+                        emissiveIntensity: 0.25,
+                        roughness: 0.6
+                    })
+                );
+                model.castShadow = true;
+                root.add(model);
+            }
+            ghostGroup.add(root);
+            const label = createNametagLabel(g.name, g.tag);
+            ghostGroup.add(label.sprite);
+            return {
+                root,
+                model,
+                label,
+                tag: g.tag,
+                trail: g.trail,
+                trailAcc: 0,
+                lastDist: g.dist ?? 0
+            };
+        }
+
+        function disposeGhostRunner(rec) {
+            ghostGroup.remove(rec.root);
+            if (rec.model && playerModelTemplate) {
+                disposePlayerMesh(rec.model);
+            } else if (rec.model?.isMesh) {
+                rec.model.geometry.dispose();
+                rec.model.material.dispose();
+            }
+            if (rec.label) {
+                ghostGroup.remove(rec.label.sprite);
+                disposeNametagLabel(rec.label);
+            }
         }
 
         function fitBuildingModel(model) {
@@ -1751,6 +1846,7 @@
             playerMesh.add(head);
 
             playerGroup.add(playerMesh);
+            playerModelTemplate = playerMesh;
         }
 
         function createTerrain() {
@@ -2295,56 +2391,49 @@
                 seen.add(g.id);
                 let rec = ghostMeshes.get(g.id);
                 if (!rec) {
-                    const ghostColor = tagColorHex(g.tag);
-                    const mesh = new THREE.Mesh(
-                        new THREE.SphereGeometry(PLAYER_RADIUS * 0.85, 16, 16),
-                        new THREE.MeshStandardMaterial({
-                            color: ghostColor,
-                            transparent: true,
-                            opacity: 0.55,
-                            emissive: ghostColor,
-                            emissiveIntensity: 0.25,
-                            roughness: 0.6
-                        })
-                    );
-                    mesh.castShadow = true;
-                    ghostGroup.add(mesh);
-                    const label = createNametagLabel(g.name, g.tag);
-                    ghostGroup.add(label.sprite);
-                    rec = { mesh, label, trailAcc: 0 };
+                    rec = createGhostRunner(g);
                     ghostMeshes.set(g.id, rec);
                 } else {
-                    const ghostColor = tagColorHex(g.tag);
-                    rec.mesh.material.color.setHex(ghostColor);
-                    rec.mesh.material.emissive.setHex(ghostColor);
+                    if (rec.tag !== g.tag) {
+                        rec.tag = g.tag;
+                        if (playerModelTemplate && rec.model) {
+                            applyGhostMaterial(rec.model, g.tag);
+                        } else if (rec.model?.material?.color) {
+                            const tint = tagColorHex(g.tag);
+                            rec.model.material.color.setHex(tint);
+                            rec.model.material.emissive.setHex(tint);
+                        }
+                    }
+                    rec.trail = g.trail;
                     updateNametagLabel(rec.label, g.name, g.tag);
                 }
+
                 const z = playerGroup.position.z - (g.dist - distanceTraveled) * 1.4;
-                rec.mesh.position.set(g.x, g.y, z);
+                rec.root.position.set(g.x, g.y, z);
                 const distZ = Math.abs(z - playerGroup.position.z);
-                const inRange = distZ < 90;
+                const inRange = distZ < 120;
                 const visible = inRange && (!isGameOver);
-                rec.mesh.visible = visible;
+                rec.root.visible = visible;
                 if (rec.label) {
-                    rec.label.sprite.position.set(g.x, g.y + PLAYER_RADIUS * 2.5, z);
+                    rec.label.sprite.position.set(g.x, g.y + PLAYER_RADIUS * 2.8, z);
                     rec.label.sprite.visible = visible;
+                }
+
+                if (rec.model && playerModelTemplate) {
+                    const distDelta = g.dist - rec.lastDist;
+                    rec.lastDist = g.dist;
+                    rec.model.rotation.x -= distDelta * 0.09;
                 }
 
                 if (visible) {
                     const gKind = trailKindFromId(g.trail);
-                    rec.trailAcc = spawnGhostTrail(gKind, rec.mesh.position, dt, rec.trailAcc || 0);
+                    rec.trailAcc = spawnGhostTrail(gKind, rec.root.position, dt, rec.trailAcc || 0);
                 }
             }
 
             for (const [id, rec] of ghostMeshes) {
                 if (!seen.has(id)) {
-                    ghostGroup.remove(rec.mesh);
-                    rec.mesh.geometry.dispose();
-                    rec.mesh.material.dispose();
-                    if (rec.label) {
-                        ghostGroup.remove(rec.label.sprite);
-                        disposeNametagLabel(rec.label);
-                    }
+                    disposeGhostRunner(rec);
                     ghostMeshes.delete(id);
                 }
             }
@@ -2354,7 +2443,7 @@
                 const online = LiveClient.watchingCount();
                 const nearby = ghosts.filter((g) => {
                     const z = playerGroup.position.z - (g.dist - distanceTraveled) * 1.4;
-                    return Math.abs(z - playerGroup.position.z) < 90;
+                    return Math.abs(z - playerGroup.position.z) < 120;
                 }).length;
                 if (nearby > 0) {
                     liveEl.textContent = `${nearby} runner${nearby !== 1 ? 's' : ''} nearby · ${online} online`;
@@ -2682,15 +2771,7 @@
                 updateHUD();
                 if (magnetActive) updatePowerupHUD();
 
-                const name = (username || document.getElementById('usernameInput').value.trim()) || 'Runner';
-                LiveClient.sendPos(
-                    name,
-                    playerGroup.position.x,
-                    playerGroup.position.y,
-                    distanceTraveled,
-                    getEquippedTag(),
-                    getEquippedTrail()
-                );
+                LiveClient.pushLivePos();
             }
 
             updateTrailParticles(dt);
