@@ -142,6 +142,15 @@
         #startScreen button { margin-top: 14px; }
         #gameOver { display: none; }
         #gameOver h1 { margin: 0 0 10px 0; color: #ff5555; }
+        body.game-playing #startScreen {
+            display: none !important;
+        }
+        body.game-over #gameOver {
+            display: block !important;
+        }
+        body.game-over #startScreen {
+            display: none !important;
+        }
         button {
             padding: 12px 28px;
             font-size: 18px;
@@ -1812,6 +1821,8 @@
             touchSteer = 0;
             if (username) loadProfile();
             renderer.domElement.focus();
+            document.getElementById('startScreen').style.display = '';
+            document.getElementById('gameOver').style.display = '';
             document.getElementById('instructions').classList.add('hidden');
             gameSpeed = BASE_SPEED;
             combo = 0;
@@ -3105,6 +3116,8 @@
             mobileSteerRight = false;
 
             updateHUD();
+            document.getElementById('startScreen').style.display = '';
+            document.getElementById('gameOver').style.display = '';
             document.getElementById('instructions').classList.remove('hidden');
             isPlaying = false;
             mobileMenuPanel = 'none';
