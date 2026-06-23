@@ -2,84 +2,73 @@
 
 Roll down the 5-lane course, jump through donut hoops, and climb the leaderboard.
 
-**Frontend:** Vercel (`index.html` + GLB assets)  
-**Backend:** Render (`server/` — MongoDB + live WebSocket), same pattern as [BBALL](https://github.com/Tanner253/BBALL)
+- **Game:** Vercel → https://jackduball.vercel.app
+- **API:** Render → https://jackduball.onrender.com
 
-## Local dev
+## Render deploy (same as BBALL)
 
-### Game (static)
+**Do not use Docker.** There is no Dockerfile. This is a plain Node server in `server/`.
 
-```bash
-npx vercel dev
-```
+### Option A — Blueprint (easiest)
 
-Open the URL shown (usually http://localhost:3000). The client talks to the API at `http://localhost:4000` by default.
+1. Render Dashboard → **New** → **Blueprint**
+2. Connect repo `Tanner253/jackduball`
+3. Render reads `render.yaml` and creates a **Node** service
+4. Paste **`MONGODB_URI`** when asked (MongoDB Atlas connection string)
+5. Deploy
 
-### API server
+### Option B — Manual (match BBALL settings)
+
+1. **Delete** the broken Docker service if you created one
+2. **New** → **Web Service** → connect GitHub repo
+3. Settings:
+
+| Field | Value |
+|-------|--------|
+| **Language / Runtime** | **Node** (not Docker) |
+| **Root Directory** | `server` |
+| **Build Command** | `npm install && npm run build` |
+| **Start Command** | `npm start` |
+| **Health Check Path** | `/healthz` |
+
+4. Environment variables:
+   - `MONGODB_URI` = your Atlas connection string *(required)*
+   - `MONGODB_DB` = `jackduball`
+   - `ALLOWED_ORIGINS` = `https://jackduball.vercel.app`
+
+5. Deploy → check https://jackduball.onrender.com/healthz returns `{"ok":true}`
+
+## MongoDB Atlas
+
+1. Free M0 cluster at mongodb.com/cloud/atlas
+2. Database user + Network Access (`0.0.0.0/0`)
+3. Copy connection string → `MONGODB_URI` on Render
+
+## Local API dev
 
 ```bash
 cd server
 cp .env.example .env
-# Edit .env — paste your MongoDB Atlas connection string
+# paste MONGODB_URI into .env
 npm install
 npm run dev
 ```
 
-Health check: http://localhost:4000/healthz
+API runs on http://localhost:4000
 
-## Deploy
-
-### 1. MongoDB Atlas (free M0)
-
-1. Create a cluster at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a database user + network access (`0.0.0.0/0` for Render)
-3. Copy the connection string → this is `MONGODB_URI`
-
-### 2. Render (API + live multiplayer)
-
-1. Push this repo to GitHub
-2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**
-3. Point at this repo — `render.yaml` provisions **jackduball-api**
-4. When prompted, set **`MONGODB_URI`** to your Atlas connection string
-5. After deploy, note the URL (e.g. `https://jackduball-api.onrender.com`)
-
-Optional env vars on Render:
-
-| Variable | Default |
-|----------|---------|
-| `MONGODB_URI` | *(required)* |
-| `MONGODB_DB` | `jackduball` |
-| `ALLOWED_ORIGINS` | `https://jackduball.vercel.app` |
-
-### 3. Vercel (game client)
+## Vercel (game client)
 
 ```bash
 npx vercel --prod
 ```
 
-If your Render URL differs from `https://jackduball-api.onrender.com`, set before deploy:
-
-```html
-<script>window.JACKDUBALL_API_URL = 'https://your-api.onrender.com';</script>
-```
-
-Or add that snippet to `index.html`.
+Production API URL is already set to `https://jackduball.onrender.com` in `index.html`.
 
 ## API
 
-| Endpoint | Description |
-|----------|-------------|
+| Route | Purpose |
+|-------|---------|
 | `GET /healthz` | Health check |
-| `GET /api/leaderboard` | Top 15 high scores (best per username) |
-| `POST /api/leaderboard` | `{ username, score }` — auto-called on game over |
-| `WS /live` | Real-time ghost runners + chat |
-
-### Live WebSocket (`/live`)
-
-While playing, each client streams `{ t: "pos", name, x, y, dist }` ~10Hz. Everyone else sees semi-transparent ghost balls on their course. Chat uses `{ t: "chat", name, text }` and persists to MongoDB.
-
-## Controls
-
-- **A / D** or **← / →** — steer across 5 lanes
-- **Spacebar** — jump through donut hoops
-- **Double-tap** — jump on mobile
+| `GET /api/leaderboard` | Top 15 scores |
+| `POST /api/leaderboard` | Submit score |
+| `WS /live` | Live ghost runners + chat |

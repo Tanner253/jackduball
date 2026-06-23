@@ -1,13 +1,12 @@
-# Render Blueprint — deploys the jackduball-api server.
-# MongoDB: create a free M0 cluster on MongoDB Atlas, then paste MONGODB_URI
-# in the Render dashboard when prompted during blueprint setup.
+# Render Blueprint — same setup as BBALL (Node web service, NOT Docker).
+# MongoDB Atlas free M0 → paste MONGODB_URI in the dashboard when prompted.
 services:
   - type: web
-    name: jackduball-api
+    name: jackduball
     runtime: node
     rootDir: server
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /healthz
     envVars:
