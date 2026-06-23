@@ -82,6 +82,17 @@ app.post("/api/leaderboard", writeLimiter, async (req, res, next) => {
   }
 });
 
+app.post("/api/profile/bank", writeLimiter, async (req, res, next) => {
+  try {
+    const { username, donuts } = req.body || {};
+    const result = await bankDonuts(username, donuts);
+    const status = result.ok ? 200 : 400;
+    res.status(status).json({ ...result, configured: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
 app.get("/api/profile", readLimiter, async (req, res, next) => {
   try {
     const result = await getProfile(req.query.username);

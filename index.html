@@ -1135,6 +1135,39 @@
             }
         }
 
+        async function bankRunDonuts(name, amount) {
+            const donutsToBank = Math.max(0, Math.floor(Number(amount) || 0));
+            if (!name || donutsToBank <= 0) return 0;
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const res = await apiFetch('/api/profile/bank', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: name, donuts: donutsToBank })
+                    }, 4);
+                    const data = await res.json();
+                    if (data.ok && data.profile) {
+                        applyProfile(data.profile);
+                        return data.banked ?? donutsToBank;
+                    }
+                    if (res.ok) return data.banked ?? 0;
+                    if (attempt < 2 && [502, 503, 504].includes(res.status)) {
+                        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+                        continue;
+                    }
+                    return 0;
+                } catch {
+                    if (attempt < 2) {
+                        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+                        continue;
+                    }
+                    return 0;
+                }
+            }
+            return 0;
+        }
+
         async function submitScore(runScore, runDonuts) {
             const finalScore = Math.max(0, Math.floor(Number(runScore) || 0));
             const donutsToBank = Math.max(0, Math.floor(Number(runDonuts) || 0));
@@ -1145,14 +1178,29 @@
             if (!name) {
                 const status = document.getElementById('usernameStatus');
                 if (status) {
-                    status.textContent = 'Set a username and tap Save — scores only save with a name.';
+                    status.textContent = 'Set a username and tap Save — runs only save with a name.';
                 }
                 return;
             }
 
             if (!username) applyUsername(name);
 
-            const payload = { username: name, score: finalScore, donuts: donutsToBank };
+            let banked = 0;
+            if (donutsToBank > 0) {
+                banked = await bankRunDonuts(name, donutsToBank);
+            }
+
+            if (finalScore <= 0) {
+                if (banked > 0) {
+                    const finalEl = document.getElementById('finalScore');
+                    if (finalEl) {
+                        finalEl.innerText = `Run ended · +${banked} 🍩 saved`;
+                    }
+                }
+                return;
+            }
+
+            const payload = { username: name, score: finalScore, donuts: 0 };
 
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
@@ -1173,7 +1221,12 @@
                         loadLeaderboard();
                     }
 
-                    if (res.ok && (data.saved || data.banked > 0 || data.ok)) {
+                    const finalEl = document.getElementById('finalScore');
+                    if (finalEl && banked > 0) {
+                        finalEl.innerText = `Final Score: ${finalScore} · +${banked} 🍩 saved`;
+                    }
+
+                    if (res.ok && (data.saved || data.ok)) {
                         return;
                     }
 

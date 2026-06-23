@@ -74,7 +74,6 @@ export async function bankDonuts(username, amount) {
         username: cleanName,
         owned: [...DEFAULT_OWNED],
         equipped: { ...DEFAULT_EQUIPPED },
-        donuts: 0,
         ts: Date.now(),
       },
       $inc: { donuts },
