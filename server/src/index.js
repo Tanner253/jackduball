@@ -3,6 +3,9 @@
  *
  *   GET  /api/leaderboard  -> top scores
  *   POST /api/leaderboard  -> submit score (auto on game over)
+ *   GET  /api/profile      -> donut balance + cosmetics
+ *   POST /api/shop/buy     -> purchase cosmetic
+ *   POST /api/shop/equip   -> equip owned cosmetic
  *   WS   /live             -> ghost positions + chat
  */
 
@@ -11,6 +14,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { addScore, getLeaderboard } from "./lib.js";
 import { attachLive } from "./live.js";
+import { bankDonuts, buyItem, equipItem, getProfile } from "./profile.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -51,8 +55,46 @@ app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
 
 app.post("/api/leaderboard", writeLimiter, async (req, res, next) => {
   try {
-    const { username, score } = req.body || {};
+    const { username, score, donuts } = req.body || {};
     const result = await addScore(username, score);
+    let profile = null;
+    const banked = Math.max(0, Math.floor(Number(donuts) || 0));
+    if (banked > 0 && username) {
+      const bank = await bankDonuts(username, banked);
+      if (bank.ok) profile = bank.profile;
+    }
+    const status = result.ok || profile ? 200 : 400;
+    res.status(status).json({ ...result, configured: true, profile });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get("/api/profile", readLimiter, async (req, res, next) => {
+  try {
+    const result = await getProfile(req.query.username);
+    const status = result.ok ? 200 : 400;
+    res.status(status).json({ ...result, configured: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/api/shop/buy", writeLimiter, async (req, res, next) => {
+  try {
+    const { username, itemId } = req.body || {};
+    const result = await buyItem(username, itemId);
+    const status = result.ok ? 200 : 400;
+    res.status(status).json({ ...result, configured: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post("/api/shop/equip", writeLimiter, async (req, res, next) => {
+  try {
+    const { username, itemId } = req.body || {};
+    const result = await equipItem(username, itemId);
     const status = result.ok ? 200 : 400;
     res.status(status).json({ ...result, configured: true });
   } catch (e) {

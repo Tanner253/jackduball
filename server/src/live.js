@@ -3,11 +3,11 @@
  * ghost balls on their course. Chat rides the same WebSocket (mirrored to Mongo).
  *
  * Protocol (JSON):
- *   client -> server: { t: "pos", name, x, y, dist }
+ *   client -> server: { t: "pos", name, x, y, dist, tag?, trail? }
  *                     { t: "end" }
  *                     { t: "chat", name, text }
  *   server -> client: { t: "hello", id }
- *                     { t: "state", players: [{id,name,x,y,dist}], watching }
+ *                     { t: "state", players: [{id,name,x,y,dist,tag,trail}], watching }
  *                     { t: "chat-history", messages }
  *                     { t: "chat", msg }
  *                     { t: "chat-err", error }
@@ -16,6 +16,7 @@
 import { WebSocketServer } from "ws";
 import { sanitizeChat, cleanName, isSignedIn } from "./chat.js";
 import { getDb, MAX_CHAT } from "./lib.js";
+import { sanitizeEquipped } from "./cosmetics.js";
 
 const STALE_MS = 5000;
 const BROADCAST_MS = 100;
@@ -63,6 +64,8 @@ export function attachLive(server) {
           x: Math.max(-20, Math.min(20, m.x)),
           y: Math.max(0, Math.min(30, m.y)),
           dist: Math.max(0, Math.min(1_000_000, Number(m.dist) || 0)),
+          tag: sanitizeEquipped(m.tag, "tag"),
+          trail: sanitizeEquipped(m.trail, "trail"),
           at: Date.now(),
         });
       } else if (m?.t === "end") {
@@ -89,7 +92,13 @@ export function attachLive(server) {
     if (!text) return;
     ws.lastChatAt = now;
 
-    const msg = { id: nextMsgId++, name: cleanName(m.name), text, ts: now };
+    const msg = {
+      id: nextMsgId++,
+      name: cleanName(m.name),
+      text,
+      ts: now,
+      tag: sanitizeEquipped(m.tag, "tag"),
+    };
     chatLog.push(msg);
     if (chatLog.length > MAX_CHAT) chatLog.shift();
     persistChat(msg);
@@ -124,6 +133,8 @@ export function attachLive(server) {
         x: Math.round(p.x * 10) / 10,
         y: Math.round(p.y * 10) / 10,
         dist: Math.round(p.dist),
+        tag: p.tag || "tag-gold",
+        trail: p.trail || "trail-none",
       })),
       watching: wss.clients.size,
     });

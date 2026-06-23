@@ -238,6 +238,93 @@
             opacity: 0.65;
             margin: 8px 0 0;
         }
+        #shopPanel {
+            bottom: 20px;
+            left: 20px;
+            width: min(300px, 92vw);
+            max-height: 42vh;
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+        }
+        #shopBalance {
+            font-size: 15px;
+            color: #ff69b4;
+            font-weight: bold;
+            margin: 0 0 4px;
+        }
+        #shopHint {
+            font-size: 11px;
+            opacity: 0.7;
+            margin: 0 0 10px;
+        }
+        .shop-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .shop-tab {
+            flex: 1;
+            margin: 0;
+            padding: 6px 8px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.35);
+        }
+        .shop-tab.active {
+            background: rgba(255, 215, 0, 0.35);
+            color: #ffd700;
+        }
+        .shop-list {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 2px;
+        }
+        .shop-item {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+        .shop-item.equipped {
+            border-color: #ffd700;
+            box-shadow: 0 0 0 1px rgba(255,215,0,0.35);
+        }
+        .shop-item-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .shop-cost { font-size: 12px; color: #ff69b4; white-space: nowrap; }
+        .shop-item-actions { display: flex; justify-content: flex-end; }
+        .shop-btn {
+            margin: 0;
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+        .shop-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .shop-equipped, .shop-muted { font-size: 11px; opacity: 0.75; }
+        .tag-preview { font-weight: bold; }
+        .tag-rainbow {
+            background: linear-gradient(90deg, #ff5555, #ffd700, #7dff9a, #66ccff, #ff69b4, #ff5555);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbowTag 2.5s linear infinite;
+        }
+        @keyframes rainbowTag {
+            to { background-position: 200% center; }
+        }
+        .chat-user.tag-rainbow {
+            -webkit-text-fill-color: transparent;
+        }
         #mobileControls {
             display: none;
             position: absolute;
@@ -290,6 +377,14 @@
                 width: min(260px, 55vw);
                 height: 180px;
             }
+            #shopPanel {
+                bottom: auto;
+                top: auto;
+                left: 10px;
+                right: auto;
+                width: min(260px, 55vw);
+                max-height: 24vh;
+            }
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -321,7 +416,7 @@
             <input id="usernameInput" maxlength="20" placeholder="Choose a username" autocomplete="off">
             <button id="usernameBtn" type="button">Save</button>
         </div>
-        <p id="usernameStatus">Set a username to unlock chat.</p>
+        <p id="usernameStatus">Set a username to unlock chat &amp; the donut shop.</p>
         <button id="startBtn">Start Rolling</button>
     </div>
 
@@ -339,6 +434,17 @@
             <button type="submit" id="chatSendBtn" disabled>Send</button>
         </form>
         <p class="panel-note">Chat works between runs and while playing.</p>
+    </div>
+
+    <div id="shopPanel" class="menu-panel">
+        <h2>Donut Shop</h2>
+        <p id="shopBalance">🍩 0 donuts</p>
+        <p id="shopHint">Set username to save &amp; spend donuts</p>
+        <div class="shop-tabs">
+            <button type="button" class="shop-tab active" data-tab="tag">Nametags</button>
+            <button type="button" class="shop-tab" data-tab="trail">Trails</button>
+        </div>
+        <div id="shopList" class="shop-list"></div>
     </div>
 
     <div id="gameOver">
@@ -368,6 +474,9 @@
         let terrainGroup;
         let obstacles = [];
         let particles = [];
+        let trailParticles = [];
+        let trailSpawnAcc = 0;
+        let playerTrailGroup = null;
         let barrierGroup;
         let lavaMaterials = [];
         let laneStripes = [];
@@ -437,6 +546,58 @@
         let lastTouchTime = 0;
         let username = localStorage.getItem('jackduball_username') || '';
         let leaderboardTimer = null;
+        let shopTab = 'tag';
+        let playerProfile = {
+            donuts: 0,
+            owned: ['tag-gold', 'trail-none'],
+            equipped: { tag: 'tag-gold', trail: 'trail-none' }
+        };
+
+        const DEFAULT_PROFILE = {
+            donuts: 0,
+            owned: ['tag-gold', 'trail-none'],
+            equipped: { tag: 'tag-gold', trail: 'trail-none' }
+        };
+
+        const COSMETICS_CATALOG = {
+            'tag-gold': { type: 'tag', name: 'Golden Tag', cost: 0, color: '#ffd700' },
+            'tag-pink': { type: 'tag', name: 'Pink Tag', cost: 15, color: '#ff69b4' },
+            'tag-cyan': { type: 'tag', name: 'Cyan Tag', cost: 15, color: '#66ccff' },
+            'tag-lime': { type: 'tag', name: 'Lime Tag', cost: 15, color: '#7dff9a' },
+            'tag-crown': { type: 'tag', name: 'Crown', cost: 25, prefix: '👑 ', color: '#ffd700' },
+            'tag-sparkle': { type: 'tag', name: 'Sparkles', cost: 25, suffix: ' ✨', color: '#ffe066' },
+            'tag-fire': { type: 'tag', name: 'On Fire', cost: 30, prefix: '🔥 ', color: '#ff8844' },
+            'tag-rainbow': { type: 'tag', name: 'Rainbow', cost: 40, style: 'rainbow' },
+            'trail-none': { type: 'trail', name: 'No Trail', cost: 0, trail: 'none' },
+            'trail-spark': { type: 'trail', name: 'Gold Sparks', cost: 20, trail: 'spark' },
+            'trail-donut': { type: 'trail', name: 'Donut Crumbs', cost: 30, trail: 'donut' },
+            'trail-neon': { type: 'trail', name: 'Neon Streak', cost: 45, trail: 'neon' },
+            'trail-rainbow': { type: 'trail', name: 'Rainbow Wake', cost: 35, trail: 'rainbow' }
+        };
+
+        const TRAIL_DEFS = {
+            spark: { color: 0xffd700, rate: 0.82, size: 0.38 },
+            donut: { color: 0xff69b4, rate: 0.88, size: 0.42, ring: true },
+            neon: { colors: [0x66ccff, 0xaa66ff, 0xff66cc], rate: 0.95, size: 0.4 },
+            rainbow: { rainbow: true, rate: 0.9, size: 0.38 }
+        };
+        const TRAIL_LIFE = 2.4;
+        const TRAIL_DECAY = 0.014;
+
+        function applyProfile(profile) {
+            if (!profile) return;
+            playerProfile = {
+                donuts: profile.donuts ?? 0,
+                owned: [...new Set([...(profile.owned ?? DEFAULT_PROFILE.owned)])],
+                equipped: {
+                    tag: 'tag-gold',
+                    trail: 'trail-none',
+                    ...(profile.equipped ?? {})
+                }
+            };
+            updateShopUI();
+            updateUsernameDisplay();
+        }
 
         const LiveClient = {
             ws: null,
@@ -485,11 +646,15 @@
                             const g = this.ghosts.get(p.id);
                             if (g) {
                                 g.tx = p.x; g.ty = p.y; g.tdist = p.dist; g.name = p.name;
+                                g.tag = p.tag || 'tag-gold'; g.trail = p.trail || 'trail-none';
                             } else {
                                 this.ghosts.set(p.id, {
                                     id: p.id, name: p.name,
                                     x: p.x, y: p.y, dist: p.dist,
-                                    tx: p.x, ty: p.y, tdist: p.dist
+                                    tx: p.x, ty: p.y, tdist: p.dist,
+                                    tag: p.tag || 'tag-gold',
+                                    trail: p.trail || 'trail-none',
+                                    trailAcc: 0
                                 });
                             }
                         }
@@ -527,19 +692,34 @@
                 return out;
             },
             watchingCount() { return this.watching; },
-            sendPos(name, x, y, dist) {
+            tagForName(name) {
+                for (const g of this.ghosts.values()) {
+                    if (g.name === name) return g.tag || 'tag-gold';
+                }
+                return 'tag-gold';
+            },
+            sendPos(name, x, y, dist, tag, trail) {
                 if (!this.ws || this.ws.readyState !== 1) return;
                 const now = performance.now();
                 if (now - this.lastSend < 90) return;
                 this.lastSend = now;
-                this.ws.send(JSON.stringify({ t: 'pos', name, x, y, dist }));
+                this.ws.send(JSON.stringify({
+                    t: 'pos', name, x, y, dist,
+                    tag: tag || 'tag-gold',
+                    trail: trail || 'trail-none'
+                }));
             },
             sendEnd() {
                 if (this.ws?.readyState === 1) this.ws.send(JSON.stringify({ t: 'end' }));
             },
             sendChat(name, text) {
                 if (!this.ws || this.ws.readyState !== 1) return false;
-                this.ws.send(JSON.stringify({ t: 'chat', name, text: text.slice(0, 200) }));
+                this.ws.send(JSON.stringify({
+                    t: 'chat',
+                    name,
+                    text: text.slice(0, 200),
+                    tag: getEquippedTag()
+                }));
                 return true;
             }
         };
@@ -735,6 +915,239 @@
             }
         };
 
+        function getEquippedTag() {
+            return playerProfile.equipped?.tag || 'tag-gold';
+        }
+
+        function getEquippedTrail() {
+            return playerProfile.equipped?.trail || 'trail-none';
+        }
+
+        function formatDisplayName(name, tagId) {
+            const item = COSMETICS_CATALOG[tagId || 'tag-gold'] || COSMETICS_CATALOG['tag-gold'];
+            let text = name || 'Runner';
+            if (item.prefix) text = item.prefix + text;
+            if (item.suffix) text = text + item.suffix;
+            return { text, color: item.color || null, style: item.style || null };
+        }
+
+        function styledNameHtml(name, tagId) {
+            const f = formatDisplayName(name, tagId);
+            const cls = f.style ? ` class="chat-user tag-${f.style}"` : ' class="chat-user"';
+            const style = f.color && !f.style ? ` style="color:${f.color}"` : (f.style ? '' : '');
+            return `<span${cls}${style}>${escapeHtml(f.text)}</span>`;
+        }
+
+        function tagColorHex(tagId) {
+            const item = COSMETICS_CATALOG[tagId];
+            if (item?.style === 'rainbow') {
+                const t = performance.now() * 0.0015;
+                return new THREE.Color().setHSL(t % 1, 0.9, 0.55).getHex();
+            }
+            const hex = item?.color;
+            return hex ? parseInt(hex.replace('#', ''), 16) : 0x66ccff;
+        }
+
+        function drawNametagCanvas(ctx, canvas, name, tagId) {
+            const f = formatDisplayName(name, tagId);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = 'bold 26px Segoe UI, Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const x = canvas.width / 2;
+            const y = canvas.height / 2;
+            if (f.style === 'rainbow') {
+                const grd = ctx.createLinearGradient(0, 0, canvas.width, 0);
+                grd.addColorStop(0, '#ff5555');
+                grd.addColorStop(0.25, '#ffd700');
+                grd.addColorStop(0.5, '#7dff9a');
+                grd.addColorStop(0.75, '#66ccff');
+                grd.addColorStop(1, '#ff69b4');
+                ctx.fillStyle = grd;
+            } else {
+                ctx.fillStyle = f.color || '#ffd700';
+            }
+            ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+            ctx.lineWidth = 5;
+            ctx.strokeText(f.text, x, y);
+            ctx.fillText(f.text, x, y);
+        }
+
+        function createNametagLabel(name, tagId) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            drawNametagCanvas(ctx, canvas, name, tagId);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            const mat = new THREE.SpriteMaterial({
+                map: tex,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(5.5, 1.35, 1);
+            sprite.renderOrder = 10;
+            return { sprite, canvas, ctx, tex, mat, name, tagId };
+        }
+
+        function updateNametagLabel(label, name, tagId) {
+            if (!label) return;
+            if (label.name === name && label.tagId === tagId) return;
+            drawNametagCanvas(label.ctx, label.canvas, name, tagId);
+            label.tex.needsUpdate = true;
+            label.name = name;
+            label.tagId = tagId;
+        }
+
+        function disposeNametagLabel(label) {
+            if (!label) return;
+            label.tex.dispose();
+            label.mat.dispose();
+        }
+
+        function updateUsernameDisplay() {
+            const status = document.getElementById('usernameStatus');
+            if (!status) return;
+            if (!username) {
+                status.textContent = 'Set a username to unlock chat & donut shop.';
+                return;
+            }
+            status.innerHTML = `Playing as ${styledNameHtml(username, getEquippedTag())}`;
+        }
+
+        function updateShopUI() {
+            const balance = document.getElementById('shopBalance');
+            const hint = document.getElementById('shopHint');
+            const list = document.getElementById('shopList');
+            if (!balance || !list) return;
+
+            balance.textContent = username
+                ? `🍩 ${playerProfile.donuts} donut${playerProfile.donuts !== 1 ? 's' : ''}`
+                : '🍩 —';
+
+            hint.textContent = username
+                ? 'Donuts from runs bank to your profile on the server.'
+                : 'Set a username to save & spend donuts';
+
+            list.innerHTML = '';
+            const items = Object.entries(COSMETICS_CATALOG)
+                .filter(([, v]) => v.type === shopTab)
+                .sort((a, b) => a[1].cost - b[1].cost);
+
+            for (const [id, item] of items) {
+                const owned = playerProfile.owned.includes(id);
+                const equipped = playerProfile.equipped[item.type] === id;
+                const div = document.createElement('div');
+                div.className = 'shop-item' + (owned ? ' owned' : '') + (equipped ? ' equipped' : '');
+
+                const preview = formatDisplayName(username || 'You', item.type === 'tag' ? id : getEquippedTag());
+                const previewHtml = item.type === 'tag'
+                    ? `<span class="tag-preview${preview.style ? ' tag-' + preview.style : ''}"${preview.color && !preview.style ? ` style="color:${preview.color}"` : ''}>${escapeHtml(preview.text)}</span>`
+                    : `<span class="trail-preview">${escapeHtml(item.name)}</span>`;
+
+                div.innerHTML = `
+                    <div class="shop-item-head">
+                        ${previewHtml}
+                        <span class="shop-cost">${item.cost === 0 ? 'Free' : item.cost + ' 🍩'}</span>
+                    </div>
+                    <div class="shop-item-actions"></div>
+                `;
+                const actions = div.querySelector('.shop-item-actions');
+
+                if (!username) {
+                    actions.innerHTML = '<span class="shop-muted">Need username</span>';
+                } else if (equipped) {
+                    actions.innerHTML = '<span class="shop-equipped">Equipped</span>';
+                    const defaultId = item.type === 'tag' ? 'tag-gold' : 'trail-none';
+                    if (id !== defaultId) {
+                        const resetBtn = document.createElement('button');
+                        resetBtn.type = 'button';
+                        resetBtn.textContent = 'Unequip';
+                        resetBtn.className = 'shop-btn';
+                        resetBtn.style.marginLeft = '8px';
+                        resetBtn.onclick = () => equipCosmetic(defaultId);
+                        actions.appendChild(resetBtn);
+                    }
+                } else if (owned) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = 'Equip';
+                    btn.className = 'shop-btn';
+                    btn.onclick = () => equipCosmetic(id);
+                    actions.appendChild(btn);
+                } else {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = `Buy ${item.cost}🍩`;
+                    btn.className = 'shop-btn';
+                    btn.disabled = playerProfile.donuts < item.cost;
+                    btn.onclick = () => buyCosmetic(id);
+                    actions.appendChild(btn);
+                }
+                list.appendChild(div);
+            }
+        }
+
+        async function loadProfile() {
+            if (!username) {
+                updateShopUI();
+                return;
+            }
+            try {
+                const res = await fetch(`${API_URL}/api/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                if (data.ok && data.profile) {
+                    applyProfile(data.profile);
+                    return;
+                }
+            } catch {
+                /* offline — keep cached profile */
+            }
+            updateShopUI();
+            updateUsernameDisplay();
+        }
+
+        async function buyCosmetic(itemId) {
+            if (!username) return;
+            try {
+                const res = await fetch(`${API_URL}/api/shop/buy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, itemId })
+                });
+                const data = await res.json();
+                if (data.ok && data.profile) {
+                    applyProfile(data.profile);
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            } catch {
+                alert('Shop unavailable — is the API running?');
+            }
+        }
+
+        async function equipCosmetic(itemId) {
+            if (!username) return;
+            try {
+                const res = await fetch(`${API_URL}/api/shop/equip`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, itemId })
+                });
+                const data = await res.json();
+                if (data.ok && data.profile) {
+                    applyProfile(data.profile);
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            } catch {
+                alert('Shop unavailable — is the API running?');
+            }
+        }
+
         function applyUsername(name) {
             username = String(name || '').trim().slice(0, 20);
             const input = document.getElementById('usernameInput');
@@ -745,16 +1158,18 @@
             if (username) {
                 localStorage.setItem('jackduball_username', username);
                 input.value = username;
-                status.textContent = `Playing as ${username}`;
                 chatInput.disabled = false;
                 chatSendBtn.disabled = false;
                 chatInput.placeholder = 'Say something...';
+                loadProfile();
             } else {
                 localStorage.removeItem('jackduball_username');
-                status.textContent = 'Set a username to unlock chat.';
+                status.textContent = 'Set a username to unlock chat & donut shop.';
                 chatInput.disabled = true;
                 chatSendBtn.disabled = true;
                 chatInput.placeholder = 'Set username to chat';
+                playerProfile = { ...DEFAULT_PROFILE };
+                updateShopUI();
             }
         }
 
@@ -799,7 +1214,7 @@
 
         async function submitScore() {
             const finalScore = Math.floor(score);
-            if (finalScore <= 0) return;
+            if (finalScore <= 0 && donutsCollected <= 0) return;
 
             const input = document.getElementById('usernameInput');
             const name = (username || input.value || '').trim().slice(0, 20);
@@ -811,9 +1226,12 @@
                 const res = await fetch(`${API_URL}/api/leaderboard`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: name, score: finalScore })
+                    body: JSON.stringify({ username: name, score: finalScore, donuts: donutsCollected })
                 });
                 const data = await res.json();
+                if (data.profile) {
+                    applyProfile(data.profile);
+                }
                 if (data.leaderboard) {
                     await renderLeaderboardRows(data.leaderboard);
                 } else {
@@ -838,7 +1256,10 @@
             line.className = 'chat-line';
             const user = entry.username || entry.name || 'Runner';
             const msg = entry.message || entry.text || '';
-            line.innerHTML = `<span class="chat-user">${escapeHtml(user)}:</span> ${escapeHtml(msg)}`;
+            const isSelf = username && user === username;
+            const tagId = entry.tag || (isSelf ? getEquippedTag() : LiveClient.tagForName(user));
+            const userHtml = styledNameHtml(user, tagId);
+            line.innerHTML = `${userHtml}: ${escapeHtml(msg)}`;
             box.appendChild(line);
             box.scrollTop = box.scrollHeight;
         }
@@ -865,6 +1286,15 @@
 
             if (username) applyUsername(username);
 
+            document.querySelectorAll('.shop-tab').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.shop-tab').forEach((b) => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    shopTab = btn.dataset.tab || 'tag';
+                    updateShopUI();
+                });
+            });
+
             usernameBtn.addEventListener('click', () => applyUsername(usernameInput.value));
             usernameInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') applyUsername(usernameInput.value);
@@ -886,6 +1316,7 @@
 
             loadLeaderboard();
             leaderboardTimer = setInterval(loadLeaderboard, 30000);
+            updateMainMenuPanels();
         }
 
         init();
@@ -934,6 +1365,9 @@
 
             playerGroup = new THREE.Group();
             scene.add(playerGroup);
+
+            playerTrailGroup = new THREE.Group();
+            playerGroup.add(playerTrailGroup);
 
             ghostGroup = new THREE.Group();
             scene.add(ghostGroup);
@@ -1009,13 +1443,21 @@
             jumpBtn.addEventListener('click', doJump);
         }
 
+        function updateMainMenuPanels() {
+            const onMainMenu = !isPlaying && !isGameOver;
+            const shop = document.getElementById('shopPanel');
+            if (shop) shop.style.display = onMainMenu ? 'flex' : 'none';
+        }
+
         function startGame() {
             if (isPlaying) return;
             SoundEngine.ensure();
             SoundEngine.play('start');
             SoundEngine.startMusic();
+            clearTrailParticles();
             isPlaying = true;
             isGameOver = false;
+            if (username) loadProfile();
             renderer.domElement.focus();
             document.getElementById('startScreen').style.display = 'none';
             document.getElementById('instructions').classList.add('hidden');
@@ -1026,6 +1468,7 @@
             magnetUntil = 0;
             seedInitialObstacles();
             updateHUD();
+            updateMainMenuPanels();
         }
 
         function onKeyDown(e) {
@@ -1701,6 +2144,117 @@
             }
         }
 
+        function trailKindFromId(trailId) {
+            return COSMETICS_CATALOG[trailId]?.trail || 'none';
+        }
+
+        function spawnTrailParticle(kind, opts = {}) {
+            const def = TRAIL_DEFS[kind];
+            if (!def) return;
+
+            let color = def.color ?? 0xffffff;
+            if (def.rainbow) {
+                color = [0xff5555, 0xffd700, 0x7dff9a, 0x66ccff, 0xff69b4][Math.floor(Math.random() * 5)];
+            } else if (def.colors) {
+                color = def.colors[Math.floor(Math.random() * def.colors.length)];
+            }
+
+            let geo;
+            if (def.ring) {
+                geo = new THREE.TorusGeometry(def.size * 0.55, def.size * 0.22, 6, 10);
+            } else {
+                geo = new THREE.SphereGeometry(def.size, 8, 8);
+            }
+            const mat = new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.92,
+                depthWrite: false
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+
+            const worldPos = opts.worldPos;
+            if (worldPos) {
+                mesh.position.copy(worldPos);
+                mesh.position.x += (Math.random() - 0.5) * 0.4;
+                mesh.position.y += PLAYER_RADIUS * 0.25;
+                mesh.position.z += 0.35 + Math.random() * 0.35;
+                scene.add(mesh);
+                trailParticles.push({ mesh, life: TRAIL_LIFE, maxLife: TRAIL_LIFE, local: false });
+            } else {
+                mesh.position.set(
+                    (Math.random() - 0.5) * 0.45,
+                    PLAYER_RADIUS * 0.15 + Math.random() * 0.3,
+                    0.2 + Math.random() * 0.35
+                );
+                (opts.parent || playerTrailGroup).add(mesh);
+                trailParticles.push({ mesh, life: TRAIL_LIFE, maxLife: TRAIL_LIFE, local: true });
+            }
+        }
+
+        function updateTrailParticles(dt) {
+            const equippedId = getEquippedTrail();
+            const kind = trailKindFromId(equippedId);
+            if (kind !== 'none' && isPlaying && !isGameOver && playerTrailGroup) {
+                const def = TRAIL_DEFS[kind];
+                if (def) {
+                    trailSpawnAcc += dt * def.rate;
+                    while (trailSpawnAcc >= 1) {
+                        trailSpawnAcc -= 1;
+                        spawnTrailParticle(kind, { parent: playerTrailGroup });
+                    }
+                }
+            }
+
+            simulateTrailParticles(dt);
+        }
+
+        function simulateTrailParticles(dt) {
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                const p = trailParticles[i];
+                p.life -= TRAIL_DECAY * dt;
+                const t = Math.max(p.life / p.maxLife, 0);
+                p.mesh.material.opacity = t * 0.88;
+                p.mesh.scale.setScalar(0.3 + t * 0.7);
+                if (p.local) {
+                    p.mesh.position.z += 0.48 * dt;
+                    p.mesh.position.y -= 0.006 * dt;
+                } else if (isPlaying) {
+                    p.mesh.position.z += gameSpeed * dt * 1.05;
+                }
+                if (p.life <= 0) {
+                    if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
+                    else scene.remove(p.mesh);
+                    p.mesh.geometry.dispose();
+                    p.mesh.material.dispose();
+                    trailParticles.splice(i, 1);
+                }
+            }
+        }
+
+        function clearTrailParticles() {
+            trailParticles.forEach((p) => {
+                if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
+                else scene.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mesh.material.dispose();
+            });
+            trailParticles = [];
+            trailSpawnAcc = 0;
+        }
+
+        function spawnGhostTrail(kind, position, dt, acc) {
+            if (kind === 'none') return acc;
+            const def = TRAIL_DEFS[kind];
+            if (!def) return acc;
+            let next = acc + dt * def.rate;
+            while (next >= 1) {
+                next -= 1;
+                spawnTrailParticle(kind, { worldPos: position });
+            }
+            return next;
+        }
+
         function handleTouchStart(e) {
             if (!isPlaying || isGameOver) return;
             if (e.target.closest('.menu-panel, #startScreen, #gameOver, #mobileControls')) return;
@@ -1741,25 +2295,45 @@
                 seen.add(g.id);
                 let rec = ghostMeshes.get(g.id);
                 if (!rec) {
+                    const ghostColor = tagColorHex(g.tag);
                     const mesh = new THREE.Mesh(
                         new THREE.SphereGeometry(PLAYER_RADIUS * 0.85, 16, 16),
                         new THREE.MeshStandardMaterial({
-                            color: 0x66ccff,
+                            color: ghostColor,
                             transparent: true,
                             opacity: 0.55,
-                            emissive: 0x224488,
-                            emissiveIntensity: 0.45,
+                            emissive: ghostColor,
+                            emissiveIntensity: 0.25,
                             roughness: 0.6
                         })
                     );
                     mesh.castShadow = true;
                     ghostGroup.add(mesh);
-                    rec = { mesh };
+                    const label = createNametagLabel(g.name, g.tag);
+                    ghostGroup.add(label.sprite);
+                    rec = { mesh, label, trailAcc: 0 };
                     ghostMeshes.set(g.id, rec);
+                } else {
+                    const ghostColor = tagColorHex(g.tag);
+                    rec.mesh.material.color.setHex(ghostColor);
+                    rec.mesh.material.emissive.setHex(ghostColor);
+                    updateNametagLabel(rec.label, g.name, g.tag);
                 }
                 const z = playerGroup.position.z - (g.dist - distanceTraveled) * 1.4;
                 rec.mesh.position.set(g.x, g.y, z);
-                rec.mesh.visible = isPlaying && !isGameOver && Math.abs(z - playerGroup.position.z) < 75;
+                const distZ = Math.abs(z - playerGroup.position.z);
+                const inRange = distZ < 90;
+                const visible = inRange && (!isGameOver);
+                rec.mesh.visible = visible;
+                if (rec.label) {
+                    rec.label.sprite.position.set(g.x, g.y + PLAYER_RADIUS * 2.5, z);
+                    rec.label.sprite.visible = visible;
+                }
+
+                if (visible) {
+                    const gKind = trailKindFromId(g.trail);
+                    rec.trailAcc = spawnGhostTrail(gKind, rec.mesh.position, dt, rec.trailAcc || 0);
+                }
             }
 
             for (const [id, rec] of ghostMeshes) {
@@ -1767,6 +2341,10 @@
                     ghostGroup.remove(rec.mesh);
                     rec.mesh.geometry.dispose();
                     rec.mesh.material.dispose();
+                    if (rec.label) {
+                        ghostGroup.remove(rec.label.sprite);
+                        disposeNametagLabel(rec.label);
+                    }
                     ghostMeshes.delete(id);
                 }
             }
@@ -1774,8 +2352,11 @@
             const liveEl = document.getElementById('liveStatus');
             if (liveEl) {
                 const online = LiveClient.watchingCount();
-                const nearby = ghosts.length;
-                if (isPlaying && nearby > 0) {
+                const nearby = ghosts.filter((g) => {
+                    const z = playerGroup.position.z - (g.dist - distanceTraveled) * 1.4;
+                    return Math.abs(z - playerGroup.position.z) < 90;
+                }).length;
+                if (nearby > 0) {
                     liveEl.textContent = `${nearby} runner${nearby !== 1 ? 's' : ''} nearby · ${online} online`;
                 } else if (online > 1) {
                     liveEl.textContent = `${online} online`;
@@ -2007,7 +2588,8 @@
 
         function updateHUD() {
             document.getElementById('scoreDisplay').innerText = Math.floor(score);
-            document.getElementById('donutDisplay').innerText = `Donuts: ${donutsCollected}`;
+            const banked = username ? ` · 🍩 ${playerProfile.donuts} saved` : '';
+            document.getElementById('donutDisplay').innerText = `Donuts: ${donutsCollected}${banked}`;
             updatePowerupHUD();
             const multDisplay = document.getElementById('multiplierDisplay');
             if (combo >= 2) {
@@ -2026,8 +2608,10 @@
             SoundEngine.stopMusic();
             LiveClient.sendEnd();
             document.getElementById('gameOver').style.display = 'block';
-            document.getElementById('finalScore').innerText = `Final Score: ${Math.floor(score)}`;
+            document.getElementById('finalScore').innerText =
+                `Final Score: ${Math.floor(score)} · +${donutsCollected} 🍩`;
             submitScore();
+            updateMainMenuPanels();
         }
 
         function resetGame() {
@@ -2036,6 +2620,7 @@
             obstacles = [];
             particles.forEach((p) => scene.remove(p.mesh));
             particles = [];
+            clearTrailParticles();
 
             playerGroup.position.set(0, GROUND_Y, 0);
             playerVelocityX = 0;
@@ -2064,6 +2649,8 @@
             document.getElementById('startScreen').style.display = 'block';
             document.getElementById('instructions').classList.remove('hidden');
             isPlaying = false;
+            updateMainMenuPanels();
+            if (username) loadProfile();
         }
 
         function onWindowResize() {
@@ -2095,12 +2682,18 @@
                 updateHUD();
                 if (magnetActive) updatePowerupHUD();
 
-                const name = username || document.getElementById('usernameInput').value.trim();
-                if (name) {
-                    LiveClient.sendPos(name, playerGroup.position.x, playerGroup.position.y, distanceTraveled);
-                }
+                const name = (username || document.getElementById('usernameInput').value.trim()) || 'Runner';
+                LiveClient.sendPos(
+                    name,
+                    playerGroup.position.x,
+                    playerGroup.position.y,
+                    distanceTraveled,
+                    getEquippedTag(),
+                    getEquippedTrail()
+                );
             }
 
+            updateTrailParticles(dt);
             updateGhostPlayers(dt);
             updateLavaOcean();
             renderer.render(scene, camera);

@@ -26,6 +26,7 @@ export async function getDb() {
           db.collection("leaderboard").createIndex({ score: -1, ts: 1 }),
           db.collection("leaderboard").createIndex({ key: 1 }, { unique: true }),
           db.collection("chat").createIndex({ id: -1 }),
+          db.collection("profiles").createIndex({ key: 1 }, { unique: true }),
         ]);
         return db;
       })

@@ -70,5 +70,8 @@ Production API URL is already set to `https://jackduball.onrender.com` in `index
 |-------|---------|
 | `GET /healthz` | Health check |
 | `GET /api/leaderboard` | Top 15 scores |
-| `POST /api/leaderboard` | Submit score |
+| `POST /api/leaderboard` | Submit score + bank run donuts |
+| `GET /api/profile?username=` | Donut balance + owned/equipped cosmetics |
+| `POST /api/shop/buy` | Purchase cosmetic `{ username, itemId }` |
+| `POST /api/shop/equip` | Equip owned cosmetic `{ username, itemId }` |
 | `WS /live` | Live ghost runners + chat |
